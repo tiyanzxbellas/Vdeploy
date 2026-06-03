@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VDeploy — Instant Vercel Deployer</title>
+    <title>VDeploy — Manajemen Vercel</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Orbitron:wght@400;600;700;900&display=swap');
@@ -402,33 +402,7 @@
         }
         .file-remove:hover { background: rgba(255,68,85,0.1); border-color: var(--red); box-shadow: 0 0 10px rgba(255,68,85,0.2); }
 
-        /* ===== STEPS ===== */
-        .steps { display: flex; gap: 4px; margin-bottom: 1.25rem; }
-        .step {
-            flex: 1;
-            height: 3px;
-            background: rgba(255,255,255,0.06);
-            position: relative;
-            overflow: hidden;
-        }
-        .step.active::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: var(--green);
-            box-shadow: 0 0 10px var(--green);
-            animation: stepPulse 1s ease-in-out infinite alternate;
-        }
-        .step.done::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: var(--green);
-            box-shadow: 0 0 6px rgba(0,255,136,0.5);
-        }
-        @keyframes stepPulse { from { opacity: 0.5; } to { opacity: 1; } }
-
-        /* ===== BUTTON ===== */
+        /* ===== BUTTONS ===== */
         .btn {
             display: inline-flex;
             align-items: center;
@@ -544,21 +518,6 @@
         }
         @keyframes progressGlow { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
 
-        /* Milestone markers */
-        .progress-milestones {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 0.4rem;
-        }
-        .milestone {
-            font-size: 0.55rem;
-            color: var(--muted);
-            letter-spacing: 0.05em;
-            opacity: 0.6;
-            transition: color 0.3s, opacity 0.3s;
-        }
-        .milestone.passed { color: var(--green); opacity: 1; }
-
         /* ===== TERMINAL ===== */
         .terminal {
             background: #020508;
@@ -666,24 +625,8 @@
 
         .result-time { font-size: 0.65rem; color: var(--muted); margin-top: 0.85rem; letter-spacing: 0.05em; }
 
-        /* ===== HISTORY ===== */
-        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
-        .btn-ghost {
-            background: transparent;
-            border: 1px solid rgba(255,68,85,0.3);
-            color: var(--red);
-            font-family: var(--font);
-            font-size: 0.65rem;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            padding: 0.4rem 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            width: auto;
-        }
-        .btn-ghost:hover { background: rgba(255,68,85,0.1); border-color: var(--red); }
-
-        .history-item {
+        /* ===== PROJECT LIST & DELETE ===== */
+        .project-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -692,32 +635,63 @@
             background: var(--bg3);
             border: 1px solid rgba(0,255,136,0.1);
             margin-bottom: 0.5rem;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+        .project-item:hover { border-color: var(--border); background: rgba(0,255,136,0.03); }
+        .project-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .project-name {
+            font-weight: 600;
+            color: var(--green);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .project-updated {
+            font-size: 0.65rem;
+            color: var(--muted);
+            margin-top: 0.25rem;
+        }
+        .btn-delete-project {
+            background: transparent;
+            border: 1px solid rgba(255,68,85,0.4);
+            color: var(--red);
+            font-family: var(--font);
+            font-size: 0.65rem;
+            letter-spacing: 0.05em;
+            padding: 0.4rem 0.8rem;
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 0.75rem;
+            white-space: nowrap;
         }
-        .history-item:hover {
-            border-color: var(--border);
-            background: rgba(0,255,136,0.03);
-            padding-left: 1.25rem;
+        .btn-delete-project:hover {
+            background: rgba(255,68,85,0.15);
+            border-color: var(--red);
+            box-shadow: 0 0 10px rgba(255,68,85,0.2);
         }
-        .h-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
-        .h-dot {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: var(--green);
-            box-shadow: 0 0 6px var(--green);
-            flex-shrink: 0;
-        }
-        .h-name { font-weight: 500; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .h-time { color: var(--muted); font-size: 0.65rem; white-space: nowrap; flex-shrink: 0; }
-        .history-empty {
+        .loading-projects {
             text-align: center;
-            font-size: 0.75rem;
             color: var(--muted);
             padding: 2rem;
-            border: 1px dashed rgba(255,255,255,0.06);
-            letter-spacing: 0.05em;
+            font-size: 0.75rem;
+        }
+        .refresh-btn {
+            background: transparent;
+            border: 1px solid var(--border-blue);
+            color: var(--blue);
+            font-family: var(--font);
+            font-size: 0.65rem;
+            padding: 0.3rem 0.6rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: auto;
+        }
+        .refresh-btn:hover {
+            border-color: var(--blue);
+            background: rgba(0,180,255,0.08);
         }
 
         /* ===== MODAL ===== */
@@ -782,7 +756,7 @@
     <!-- NAVBAR -->
     <div class="navbar">
         <div class="brand" onclick="window.location.reload()">V<span>Deploy</span></div>
-        <div class="badge">⬡ Instant Vercel Deployer</div>
+        <div class="badge">⬡ Vercel Manager</div>
     </div>
 
     <!-- TOKEN CARD -->
@@ -801,15 +775,6 @@
     <!-- DEPLOY CARD -->
     <div class="card">
         <div class="card-title">Deploy Berkas Baru</div>
-
-        <!-- Steps -->
-        <div class="steps">
-            <div class="step" id="ps1"></div>
-            <div class="step" id="ps2"></div>
-            <div class="step" id="ps3"></div>
-            <div class="step" id="ps4"></div>
-            <div class="step" id="ps5"></div>
-        </div>
 
         <!-- Project Name -->
         <div class="input-group">
@@ -849,13 +814,6 @@
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
-            <div class="progress-milestones">
-                <span class="milestone" id="m0">INIT</span>
-                <span class="milestone" id="m1">UPLOAD</span>
-                <span class="milestone" id="m2">BUILD</span>
-                <span class="milestone" id="m3">DOMAIN</span>
-                <span class="milestone" id="m4">LIVE</span>
-            </div>
         </div>
 
         <!-- Terminal -->
@@ -868,24 +826,20 @@
             <div class="result-label">DEPLOYMENT BERHASIL</div>
             <div class="result-url" id="deployUrl"></div>
             <div class="result-actions">
-                <button class="btn btn-copy" id="btnCopyDeploy" onclick="copyUrl()">
-                    ⎘ &nbsp; SALIN TAUTAN
-                </button>
-                <button class="btn btn-outline" id="openLink" onclick="window.open(this.getAttribute('data-url'), '_blank')">
-                    ↗ &nbsp; BUKA SITUS
-                </button>
+                <button class="btn btn-copy" id="btnCopyDeploy" onclick="copyUrl()">⎘ &nbsp; SALIN TAUTAN</button>
+                <button class="btn btn-outline" id="openLink" onclick="window.open(this.getAttribute('data-url'), '_blank')">↗ &nbsp; BUKA SITUS</button>
             </div>
             <div class="result-time" id="resultTime"></div>
         </div>
     </div>
 
-    <!-- HISTORY CARD -->
+    <!-- PROJECT LIST & DELETE CARD -->
     <div class="card">
         <div class="history-header">
-            <div class="card-title" style="margin-bottom:0">Riwayat Deploy</div>
-            <button class="btn-ghost" onclick="triggerClearHistory()">KOSONGKAN</button>
+            <div class="card-title" style="margin-bottom:0">Project Vercel</div>
+            <button class="refresh-btn" onclick="fetchAllProjects()">⟳ MUAT ULANG</button>
         </div>
-        <div id="historyList"></div>
+        <div id="projectListContainer"></div>
     </div>
 </div>
 
@@ -911,12 +865,17 @@
     // ============ STATE ============
     let selectedFile = null;
     let deployHistory = JSON.parse(localStorage.getItem("vd_history") || "[]");
+    let currentProjects = [];
 
     // ============ TOKEN ============
     const tokenInput = document.getElementById("vercelToken");
     const savedToken = localStorage.getItem("vd_token");
     if (savedToken) tokenInput.value = savedToken;
-    tokenInput.addEventListener("input", () => localStorage.setItem("vd_token", tokenInput.value.trim()));
+    tokenInput.addEventListener("input", () => {
+        localStorage.setItem("vd_token", tokenInput.value.trim());
+        // Auto refresh projects on token change
+        fetchAllProjects();
+    });
 
     function getToken() {
         const token = tokenInput.value.trim();
@@ -987,23 +946,6 @@
         document.getElementById("progressFill").style.width = pct + "%";
         document.getElementById("progressPct").textContent = pct + "%";
         document.getElementById("progressLabel").textContent = label;
-
-        // Update milestone markers
-        const thresholds = [0, 25, 50, 75, 100];
-        thresholds.forEach((t, i) => {
-            const el = document.getElementById("m" + i);
-            if (el) el.classList.toggle("passed", pct >= t);
-        });
-    }
-
-    function activateStep(id) {
-        const steps = ["ps1", "ps2", "ps3", "ps4", "ps5"];
-        steps.forEach((s, i) => {
-            const el = document.getElementById(s);
-            el.classList.remove("active", "done");
-            if (s === id) el.classList.add("active");
-            else if (steps.indexOf(id) > i) el.classList.add("done");
-        });
     }
 
     // ============ DEPLOY ============
@@ -1031,8 +973,6 @@
         let files = [];
 
         try {
-            // STEP 1
-            activateStep("ps1");
             setProgress(8, "Mengemas berkas...");
             addLog("info", "▶ Memulai proses deployment...");
             await delay(350);
@@ -1041,15 +981,12 @@
                 addLog("info", "🗜 Mengekstrak ZIP di memory...");
                 files = await extractZip(selectedFile);
                 addLog("success", "✓ ZIP diurai: " + files.length + " file.");
-                files.forEach(f => addLog("muted", "  → " + f.file));
             } else {
                 const content = await readFileAsText(selectedFile);
                 files = [{ file: "index.html", data: btoa(unescape(encodeURIComponent(content))), encoding: "base64" }];
                 addLog("success", "✓ HTML siap dimuat.");
             }
 
-            // STEP 2
-            activateStep("ps2");
             setProgress(28, "Mengunggah ke Vercel...");
             addLog("info", "📤 Mengirim payload ke Vercel Cloud API...");
             await delay(250);
@@ -1074,12 +1011,7 @@
 
             const result = await res.json();
             addLog("success", "✓ Deployment dibuat! ID: " + result.id);
-            addLog("muted", "  → URL alokasi: " + result.url);
             setProgress(45, "Upload selesai, build dimulai...");
-
-            // STEP 3
-            activateStep("ps3");
-            addLog("info", "🔨 Menunggu Vercel memproses build...");
 
             const deployId = result.id;
             let state = result.readyState || "BUILDING";
@@ -1094,52 +1026,18 @@
                     });
                     const checkRes = await check.json();
                     state = checkRes.readyState || state;
-
-                    // Smooth progress from 45 → 85 during build
                     const buildPct = Math.min(45 + iteration * 1.8, 85);
                     setProgress(Math.round(buildPct), "Build berjalan... " + (iteration * 2) + "s");
-                    addLog("muted", "  ↻ Status: " + state + " · " + (iteration * 2) + "s");
-                } catch (e) {
-                    addLog("muted", "  ↻ Sinkronisasi ulang...");
-                }
+                } catch (e) { }
             }
 
-            if (state === "ERROR") throw new Error("Build gagal! Periksa kelengkapan file HTML/ZIP.");
-            if (state === "CANCELED") throw new Error("Deployment dibatalkan dari Vercel.");
+            if (state === "ERROR") throw new Error("Build gagal!");
+            if (state === "CANCELED") throw new Error("Deployment dibatalkan.");
 
-            // STEP 4
-            activateStep("ps4");
             setProgress(90, "Konfigurasi domain...");
-            addLog("info", "🌐 Mengambil domain resmi...");
-            await delay(300);
-
             let domain = "https://" + slug + ".vercel.app";
-            try {
-                const projRes = await fetch("https://api.vercel.com/v9/projects/" + slug, {
-                    headers: { "Authorization": "Bearer " + token }
-                });
-                const projData = await projRes.json();
-                if (projData.alias && projData.alias.length > 0) {
-                    const aliases = projData.alias
-                        .map(a => typeof a === "string" ? a : (a.domain || ""))
-                        .filter(a => a.endsWith(".vercel.app"))
-                        .sort((a, b) => a.length - b.length);
-                    if (aliases.length > 0) {
-                        domain = "https://" + aliases[0];
-                        addLog("success", "  → Domain: " + aliases[0]);
-                    }
-                }
-            } catch (e) {
-                addLog("muted", "  → Memakai domain cadangan.");
-            }
-
-            // STEP 5
-            activateStep("ps5");
-            setProgress(100, "Selesai! 🚀");
-            addLog("success", "");
-            addLog("success", "▓▓▓ DEPLOYMENT BERHASIL! ▓▓▓");
             addLog("success", "🔗 " + domain);
-            addLog("success", "══════════════════════════════");
+            setProgress(100, "Selesai! 🚀");
 
             document.getElementById("resultCard").classList.add("active");
             const urlEl = document.getElementById("deployUrl");
@@ -1153,21 +1051,103 @@
             urlEl.innerHTML = formattedUrl || domain;
             urlEl.setAttribute("data-raw-url", domain);
             document.getElementById("openLink").setAttribute("data-url", domain);
-            document.getElementById("resultTime").textContent =
-                "Ditayangkan " + new Date().toLocaleDateString("id-ID") + " · Proyek: " + slug;
+            document.getElementById("resultTime").textContent = "Ditayangkan " + new Date().toLocaleDateString("id-ID") + " · Proyek: " + slug;
 
             saveHistory({ name: slug, url: domain, time: new Date().toISOString(), file: selectedFile.name });
             renderHistory();
+            await fetchAllProjects(); // Refresh project list
 
         } catch (err) {
             addLog("error", "✕ Error: " + err.message);
             setProgress(0, "Deployment dibatalkan.");
             document.getElementById("progressWrap").classList.remove("active");
-            ["ps1","ps2","ps3","ps4","ps5"].forEach(s => document.getElementById(s).classList.remove("active","done"));
         } finally {
             btn.disabled = false;
             btn.classList.remove("btn-deploying");
             btn.innerHTML = "▶ &nbsp; JALANKAN DEPLOYMENT";
+        }
+    }
+
+    // ============ FETCH ALL PROJECTS ============
+    async function fetchAllProjects() {
+        const token = tokenInput.value.trim();
+        if (!token) {
+            document.getElementById("projectListContainer").innerHTML = "<div class='loading-projects'>Masukkan token untuk melihat project</div>";
+            return;
+        }
+
+        document.getElementById("projectListContainer").innerHTML = "<div class='loading-projects'>⟳ Memuat project dari Vercel...</div>";
+        
+        try {
+            let allProjects = [];
+            let next = null;
+            do {
+                let url = "https://api.vercel.com/v9/projects?limit=100";
+                if (next) url += "&until=" + next;
+                const res = await fetch(url, { headers: { "Authorization": "Bearer " + token } });
+                if (!res.ok) throw new Error("Gagal mengambil data project");
+                const data = await res.json();
+                allProjects = [...allProjects, ...(data.projects || [])];
+                next = data.pagination?.next || null;
+            } while (next);
+
+            currentProjects = allProjects;
+            renderProjectList(allProjects);
+            addLog("info", `📁 ${allProjects.length} project ditemukan di akun Vercel`);
+        } catch (err) {
+            document.getElementById("projectListContainer").innerHTML = `<div class='loading-projects' style='color:var(--red)'>Gagal memuat: ${err.message}</div>`;
+            addLog("error", "Gagal memuat project: " + err.message);
+        }
+    }
+
+    function renderProjectList(projects) {
+        const container = document.getElementById("projectListContainer");
+        if (!projects.length) {
+            container.innerHTML = "<div class='history-empty'>Tidak ada project ditemukan.</div>";
+            return;
+        }
+        container.innerHTML = projects.map(proj => `
+            <div class="project-item">
+                <div class="project-info">
+                    <div class="project-name">${escapeHtml(proj.name)}</div>
+                    <div class="project-updated">Updated: ${new Date(proj.updatedAt).toLocaleDateString("id-ID")}</div>
+                </div>
+                <button class="btn-delete-project" onclick="confirmDeleteProject('${escapeHtml(proj.name)}')">DELETE</button>
+            </div>
+        `).join("");
+    }
+
+    // ============ DELETE PROJECT ============
+    let pendingDeleteProject = null;
+    function confirmDeleteProject(projectName) {
+        pendingDeleteProject = projectName;
+        showCustomModal("Hapus Project", `Yakin ingin menghapus project "${projectName}" dari Vercel? Tindakan ini tidak dapat dibatalkan.`, async () => {
+            if (pendingDeleteProject) await deleteProject(pendingDeleteProject);
+            pendingDeleteProject = null;
+        });
+    }
+
+    async function deleteProject(projectName) {
+        try {
+            const token = getToken();
+            addLog("warn", `🗑 Menghapus project ${projectName}...`);
+            const res = await fetch(`https://api.vercel.com/v9/projects/${encodeURIComponent(projectName)}`, {
+                method: "DELETE",
+                headers: { "Authorization": "Bearer " + token }
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error?.message || `Gagal delete (${res.status})`);
+            }
+            addLog("success", `✓ Project "${projectName}" berhasil dihapus`);
+            await fetchAllProjects();
+            // Also cleanup history
+            deployHistory = deployHistory.filter(h => h.name !== projectName);
+            localStorage.setItem("vd_history", JSON.stringify(deployHistory));
+            renderHistory();
+        } catch (err) {
+            addLog("error", `Gagal hapus project: ${err.message}`);
+            showCustomModal("Error", err.message, null, false);
         }
     }
 
@@ -1197,7 +1177,6 @@
             const prefix = entries[0][0].split("/")[0] + "/";
             if (entries.length > 1 && entries.every(([p]) => p.startsWith(prefix))) stripPrefix = prefix;
         }
-        addLog("muted", stripPrefix ? '  → Strip prefix: "' + stripPrefix + '"' : "  → Path murni, tanpa root.");
         const files = [];
         for (const [path, entry] of entries) {
             const cleanPath = stripPrefix ? path.slice(stripPrefix.length) : path;
@@ -1205,12 +1184,18 @@
             const data = await entry.async("uint8array");
             files.push({ file: cleanPath, data: uint8ToBase64(data), encoding: "base64" });
         }
-        if (!files.some(f => f.file === "index.html"))
-            addLog("warn", "  ⚠ index.html tidak ditemukan di root ZIP!");
         return files;
     }
 
-    // ============ COPY ============
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
     function copyUrl() {
         const urlEl = document.getElementById("deployUrl");
         const url = (urlEl.getAttribute("data-raw-url") || urlEl.textContent).trim();
@@ -1242,9 +1227,6 @@
         document.getElementById("customModal").classList.add("active");
     }
     function closeModal() { document.getElementById("customModal").classList.remove("active"); }
-    function triggerClearHistory() {
-        showCustomModal("Hapus Riwayat", "Hapus seluruh riwayat deployment dari penyimpanan lokal?", clearHistory);
-    }
 
     // ============ HISTORY ============
     function saveHistory(entry) {
@@ -1253,6 +1235,7 @@
     }
     function renderHistory() {
         const container = document.getElementById("historyList");
+        if (!container) return;
         if (!deployHistory.length) {
             container.innerHTML = "<div class='history-empty'>Belum ada riwayat deployment.</div>";
             return;
@@ -1261,19 +1244,17 @@
             <div class="history-item" onclick="window.open('${item.url}', '_blank')">
                 <div class="h-left">
                     <div class="h-dot"></div>
-                    <div class="h-name">${item.file}</div>
+                    <div class="h-name">${escapeHtml(item.file)}</div>
                 </div>
                 <div class="h-time">${new Date(item.time).toLocaleDateString("id-ID")}</div>
             </div>
         `).join("");
     }
-    function clearHistory() {
-        deployHistory = [];
-        localStorage.removeItem("vd_history");
-        renderHistory();
-    }
 
+    // Initialize
     renderHistory();
+    // Load projects if token exists
+    if (savedToken) fetchAllProjects();
 </script>
 </body>
 </html>
