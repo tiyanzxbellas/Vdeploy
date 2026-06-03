@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VDeploy — Instant Vercel Deployer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Orbitron:wght@400;600;700;900&display=swap');
+
+        :root {
+            --bg: #050a0e;
+            --bg2: #080f14;
+            --bg3: #0d1821;
+            --green: #00ff88;
+            --green-dim: #00c96a;
+            --green-glow: rgba(0,255,136,0.15);
+            --blue: #00b4ff;
+            --blue-dim: #0088cc;
+            --blue-glow: rgba(0,180,255,0.15);
+            --cyan: #00e5ff;
+            --white: #e8f4f8;
+            --muted: #4a6b7a;
+            --border: rgba(0,255,136,0.25);
+            --border-blue: rgba(0,180,255,0.25);
+            --red: #ff4455;
+            --font: 'JetBrains Mono', monospace;
+            --display: 'Orbitron', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===== INTRO SPLASH ===== */
+        #splash {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            animation: splashOut 0.6s ease-in 2.8s forwards;
+        }
+        #splash.hidden { display: none; }
+
+        .splash-logo {
+            font-family: var(--display);
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 900;
+            letter-spacing: 0.1em;
+            color: transparent;
+            -webkit-text-stroke: 1px var(--green);
+            position: relative;
+            animation: splashLogo 1s ease-out 0.2s both;
+        }
+        .splash-logo::after {
+            content: 'VDEPLOY';
+            position: absolute;
+            inset: 0;
+            color: var(--green);
+            clip-path: inset(0 100% 0 0);
+            animation: revealText 1.2s ease-out 0.5s forwards;
+            filter: drop-shadow(0 0 20px var(--green));
+        }
+
+        .splash-bar-wrap {
+            width: clamp(200px, 50vw, 360px);
+            height: 3px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .splash-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--green), var(--blue));
+            animation: splashBar 2s ease-out 0.3s both;
+            box-shadow: 0 0 12px var(--green);
+        }
+        .splash-text {
+            font-family: var(--font);
+            font-size: 0.7rem;
+            color: var(--muted);
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            animation: fadeInUp 0.6s ease 0.8s both;
+        }
+
+        @keyframes splashLogo { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        @keyframes revealText { to { clip-path: inset(0 0% 0 0); } }
+        @keyframes splashBar { from { width: 0; } to { width: 100%; } }
+        @keyframes splashOut { to { opacity: 0; pointer-events: none; } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ===== SCANLINE BACKGROUND ===== */
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--white);
+            min-height: 100vh;
+            padding: 2rem 1rem 4rem;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,255,136,0.012) 2px,
+                rgba(0,255,136,0.012) 4px
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Grid lines background */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,180,255,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,180,255,0.04) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Moving gradient blob */
+        .bg-glow {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,255,136,0.04) 0%, transparent 70%);
+            top: -200px;
+            right: -200px;
+            pointer-events: none;
+            animation: blobMove 12s ease-in-out infinite alternate;
+            z-index: 0;
+        }
+        .bg-glow2 {
+            position: fixed;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0,180,255,0.05) 0%, transparent 70%);
+            bottom: 100px;
+            left: -150px;
+            pointer-events: none;
+            animation: blobMove2 15s ease-in-out infinite alternate;
+            z-index: 0;
+        }
+        @keyframes blobMove { to { transform: translate(-80px, 100px) scale(1.1); } }
+        @keyframes blobMove2 { to { transform: translate(60px, -80px) scale(0.9); } }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            position: relative;
+            z-index: 1;
+            opacity: 0;
+            animation: fadeInUp 0.7s ease 3.2s forwards;
+        }
+
+        /* ===== NAVBAR ===== */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .brand {
+            font-family: var(--display);
+            font-size: 1.8rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            color: var(--green);
+            text-shadow: 0 0 20px rgba(0,255,136,0.5), 0 0 40px rgba(0,255,136,0.2);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .brand::before {
+            content: '>';
+            color: var(--blue);
+            margin-right: 0.4rem;
+            animation: cursorBlink 1s step-end infinite;
+        }
+        .brand:hover {
+            text-shadow: 0 0 30px rgba(0,255,136,0.8), 0 0 60px rgba(0,255,136,0.4);
+            letter-spacing: 0.12em;
+        }
+        .brand span { color: var(--blue); }
+
+        @keyframes cursorBlink { 50% { opacity: 0; } }
+
+        .badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--blue);
+            border: 1px solid var(--border-blue);
+            padding: 0.4rem 0.9rem;
+            background: rgba(0,180,255,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        .badge::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,180,255,0.15), transparent);
+            animation: shimmer 3s infinite;
+        }
+        @keyframes shimmer { to { left: 200%; } }
+
+        /* ===== CARD ===== */
+        .card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--green), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .card:hover::before { opacity: 1; }
+        .card:hover {
+            border-color: rgba(0,255,136,0.4);
+            box-shadow: 0 0 30px rgba(0,255,136,0.06), inset 0 0 30px rgba(0,255,136,0.02);
+        }
+
+        /* Corner decorations */
+        .card::after {
+            content: '';
+            position: absolute;
+            bottom: 0; right: 0;
+            width: 40px; height: 40px;
+            border-bottom: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
+            color: var(--green);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .card-title::before {
+            content: '';
+            width: 20px;
+            height: 1px;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+        }
+        .card-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--border), transparent);
+        }
+
+        /* ===== INPUTS ===== */
+        .input-group { margin-bottom: 1.25rem; }
+        .input-group label {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--green);
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: var(--font);
+            outline: none;
+            transition: all 0.2s;
+            caret-color: var(--green);
+        }
+        .input-group input:focus {
+            border-color: var(--green);
+            box-shadow: 0 0 0 2px rgba(0,255,136,0.1), 0 0 20px rgba(0,255,136,0.05);
+            background: rgba(0,255,136,0.03);
+        }
+        .input-group input::placeholder { color: var(--muted); font-size: 0.8rem; }
+        .helper-text { font-size: 0.7rem; color: var(--muted); margin-top: 0.4rem; }
+        .helper-text a { color: var(--blue); text-decoration: none; }
+        .helper-text a:hover { text-shadow: 0 0 10px var(--blue); }
+
+        /* ===== DROP ZONE ===== */
+        .drop-zone {
+            border: 1px dashed var(--border);
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1.25rem;
+            position: relative;
+            background: rgba(0,255,136,0.01);
+        }
+        .drop-zone:hover {
+            border-color: var(--green);
+            background: rgba(0,255,136,0.04);
+            box-shadow: 0 0 30px rgba(0,255,136,0.08);
+        }
+        .drop-zone.drag-over {
+            border-color: var(--blue);
+            background: rgba(0,180,255,0.06);
+            box-shadow: 0 0 40px rgba(0,180,255,0.15);
+        }
+
+        /* Corner ticks on drop zone */
+        .drop-zone::before, .drop-zone::after {
+            content: '';
+            position: absolute;
+            width: 16px; height: 16px;
+            border-color: var(--muted);
+            border-style: solid;
+            transition: border-color 0.3s;
+        }
+        .drop-zone::before { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+        .drop-zone::after { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+        .drop-zone:hover::before, .drop-zone:hover::after { border-color: var(--green); }
+
+        .drop-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+            display: block;
+            filter: drop-shadow(0 0 10px rgba(0,255,136,0.3));
+            transition: transform 0.3s;
+        }
+        .drop-zone:hover .drop-icon { transform: translateY(-6px) scale(1.05); }
+
+        .drop-text { font-size: 0.85rem; font-weight: 600; color: var(--white); }
+        .drop-subtext { font-size: 0.7rem; color: var(--muted); margin-top: 0.3rem; letter-spacing: 0.05em; }
+        .file-input { display: none; }
+
+        /* ===== FILE PREVIEW ===== */
+        .file-preview {
+            display: none;
+            background: rgba(0,255,136,0.03);
+            border: 1px solid var(--border);
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+            align-items: center;
+            gap: 1rem;
+            animation: fadeInUp 0.3s ease both;
+        }
+        .file-preview.active { display: flex; }
+        .file-icon-big {
+            font-size: 2rem;
+            filter: drop-shadow(0 0 8px rgba(0,255,136,0.4));
+        }
+        .file-info { flex: 1; min-width: 0; }
+        .file-name { font-weight: 600; font-size: 0.85rem; color: var(--green); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-meta { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
+        .file-remove {
+            background: transparent;
+            border: 1px solid rgba(255,68,85,0.4);
+            color: var(--red);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-family: var(--font);
+            padding: 0.35rem 0.6rem;
+            transition: all 0.2s;
+        }
+        .file-remove:hover { background: rgba(255,68,85,0.1); border-color: var(--red); box-shadow: 0 0 10px rgba(255,68,85,0.2); }
+
+        /* ===== STEPS ===== */
+        .steps { display: flex; gap: 4px; margin-bottom: 1.25rem; }
+        .step {
+            flex: 1;
+            height: 3px;
+            background: rgba(255,255,255,0.06);
+            position: relative;
+            overflow: hidden;
+        }
+        .step.active::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            animation: stepPulse 1s ease-in-out infinite alternate;
+        }
+        .step.done::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--green);
+            box-shadow: 0 0 6px rgba(0,255,136,0.5);
+        }
+        @keyframes stepPulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+        /* ===== BUTTON ===== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.85rem 1.5rem;
+            border: 1px solid var(--green);
+            font-family: var(--font);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            background: transparent;
+            color: var(--green);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,255,136,0.15), transparent);
+            transition: left 0.4s;
+        }
+        .btn-primary { background: rgba(0,255,136,0.08); }
+        .btn-primary:hover:not(:disabled) {
+            background: rgba(0,255,136,0.15);
+            box-shadow: 0 0 20px rgba(0,255,136,0.2), inset 0 0 20px rgba(0,255,136,0.05);
+            color: #fff;
+        }
+        .btn-primary:hover::before { left: 100%; }
+        .btn-primary:active:not(:disabled) { transform: scale(0.99); }
+        .btn-primary:disabled {
+            border-color: var(--muted);
+            color: var(--muted);
+            cursor: not-allowed;
+        }
+        .btn-primary:disabled::before { display: none; }
+
+        /* Deploying animation */
+        .btn-deploying {
+            background: rgba(0,180,255,0.1) !important;
+            border-color: var(--blue) !important;
+            color: var(--blue) !important;
+        }
+        .btn-deploying::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 30%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,180,255,0.3), transparent);
+            animation: btnSweep 1.2s linear infinite;
+        }
+        @keyframes btnSweep { to { left: 120%; } }
+
+        /* ===== PROGRESS ===== */
+        .progress-wrap {
+            display: none;
+            margin-top: 1.25rem;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            padding: 1rem 1.25rem;
+        }
+        .progress-wrap.active { display: block; }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .progress-label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--muted);
+            letter-spacing: 0.05em;
+        }
+        .progress-pct {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--green);
+            font-family: var(--display);
+            letter-spacing: 0.05em;
+            text-shadow: 0 0 10px rgba(0,255,136,0.5);
+            transition: all 0.3s;
+            min-width: 50px;
+            text-align: right;
+        }
+        .progress-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.04);
+            position: relative;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--green), var(--blue));
+            transition: width 0.5s cubic-bezier(0.1, 0.8, 0.2, 1);
+            position: relative;
+        }
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 40px; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6));
+            animation: progressGlow 1.5s ease-in-out infinite;
+        }
+        @keyframes progressGlow { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+        /* Milestone markers */
+        .progress-milestones {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.4rem;
+        }
+        .milestone {
+            font-size: 0.55rem;
+            color: var(--muted);
+            letter-spacing: 0.05em;
+            opacity: 0.6;
+            transition: color 0.3s, opacity 0.3s;
+        }
+        .milestone.passed { color: var(--green); opacity: 1; }
+
+        /* ===== TERMINAL ===== */
+        .terminal {
+            background: #020508;
+            border: 1px solid rgba(0,255,136,0.1);
+            padding: 1.25rem;
+            margin-top: 1.25rem;
+            max-height: 260px;
+            overflow-y: auto;
+            font-family: var(--font);
+            font-size: 0.72rem;
+            line-height: 1.7;
+            color: #c8d8e0;
+            position: relative;
+        }
+        .terminal::before {
+            content: 'SYSTEM OUTPUT';
+            position: absolute;
+            top: 0; right: 12px;
+            font-size: 0.55rem;
+            color: var(--muted);
+            letter-spacing: 0.2em;
+            line-height: 2;
+        }
+        .terminal::-webkit-scrollbar { width: 4px; }
+        .terminal::-webkit-scrollbar-track { background: transparent; }
+        .terminal::-webkit-scrollbar-thumb { background: var(--border); }
+
+        .log-line {
+            word-break: break-all;
+            opacity: 0;
+            animation: logIn 0.15s ease forwards;
+            padding-left: 0.25rem;
+        }
+        @keyframes logIn { to { opacity: 1; } }
+        .log-line.success { color: var(--green); }
+        .log-line.error { color: var(--red); }
+        .log-line.warn { color: #ffcc00; }
+        .log-line.info { color: var(--blue); }
+        .log-line.muted { color: #3a5264; }
+        .log-cursor {
+            display: inline-block;
+            width: 7px;
+            height: 12px;
+            background: var(--green);
+            vertical-align: middle;
+            animation: cursorBlink 0.8s step-end infinite;
+            box-shadow: 0 0 8px var(--green);
+        }
+
+        /* ===== RESULT ===== */
+        .result-card {
+            display: none;
+            margin-top: 1.25rem;
+            background: rgba(0,255,136,0.03);
+            border: 1px solid rgba(0,255,136,0.3);
+            padding: 1.5rem;
+            animation: fadeInUp 0.4s ease both;
+            position: relative;
+        }
+        .result-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, var(--green), var(--blue), var(--green));
+            background-size: 200% 100%;
+            animation: gradShift 3s linear infinite;
+        }
+        @keyframes gradShift { to { background-position: 200% 0; } }
+        .result-card.active { display: block; }
+
+        .result-label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: var(--green);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .result-label::before { content: '✓'; font-size: 0.7rem; }
+
+        .result-url {
+            font-size: 0.85rem;
+            word-break: break-all;
+            margin-bottom: 1rem;
+            color: var(--white);
+            background: var(--bg3);
+            padding: 0.85rem 1rem;
+            border: 1px solid var(--border);
+            font-weight: 500;
+        }
+        .url-protocol { color: var(--muted); }
+        .url-domain { color: var(--white); }
+        .url-tld { color: var(--blue); }
+
+        .result-actions { display: flex; gap: 0.75rem; }
+        .result-actions .btn { width: auto; flex: 1; padding: 0.65rem 1rem; font-size: 0.7rem; }
+        .btn-copy { border-color: var(--green); color: var(--green); background: rgba(0,255,136,0.06); }
+        .btn-copy:hover { background: rgba(0,255,136,0.15); box-shadow: 0 0 15px rgba(0,255,136,0.15); }
+        .btn-outline { border-color: var(--blue); color: var(--blue); background: rgba(0,180,255,0.05); }
+        .btn-outline:hover { background: rgba(0,180,255,0.12); box-shadow: 0 0 15px rgba(0,180,255,0.12); }
+
+        .result-time { font-size: 0.65rem; color: var(--muted); margin-top: 0.85rem; letter-spacing: 0.05em; }
+
+        /* ===== HISTORY ===== */
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid rgba(255,68,85,0.3);
+            color: var(--red);
+            font-family: var(--font);
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 0.4rem 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: auto;
+        }
+        .btn-ghost:hover { background: rgba(255,68,85,0.1); border-color: var(--red); }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg3);
+            border: 1px solid rgba(0,255,136,0.1);
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.75rem;
+        }
+        .history-item:hover {
+            border-color: var(--border);
+            background: rgba(0,255,136,0.03);
+            padding-left: 1.25rem;
+        }
+        .h-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+        .h-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            flex-shrink: 0;
+        }
+        .h-name { font-weight: 500; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .h-time { color: var(--muted); font-size: 0.65rem; white-space: nowrap; flex-shrink: 0; }
+        .history-empty {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--muted);
+            padding: 2rem;
+            border: 1px dashed rgba(255,255,255,0.06);
+            letter-spacing: 0.05em;
+        }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: var(--bg2);
+            border: 1px solid rgba(255,68,85,0.3);
+            padding: 2rem;
+            max-width: 420px;
+            width: 100%;
+            animation: fadeInUp 0.25s ease both;
+            position: relative;
+        }
+        .modal-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--red), transparent);
+        }
+        .modal-title {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: var(--red);
+            margin-bottom: 1rem;
+        }
+        .modal-desc { font-size: 0.8rem; color: var(--white); line-height: 1.6; margin-bottom: 1.5rem; font-weight: 400; }
+        .modal-buttons { display: flex; gap: 0.75rem; }
+        .modal-buttons .btn { width: auto; flex: 1; padding: 0.65rem; font-size: 0.7rem; }
+        .modal-cancel { border-color: var(--muted); color: var(--muted); }
+        .modal-cancel:hover { border-color: var(--white); color: var(--white); background: rgba(255,255,255,0.05); }
+        .modal-confirm { border-color: var(--red); color: var(--red); background: rgba(255,68,85,0.06); }
+        .modal-confirm:hover { background: rgba(255,68,85,0.15); box-shadow: 0 0 15px rgba(255,68,85,0.2); }
+    </style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash">
+    <div class="splash-logo">VDEPLOY</div>
+    <div class="splash-bar-wrap"><div class="splash-bar"></div></div>
+    <div class="splash-text">Initializing deployment engine...</div>
+</div>
+
+<div class="bg-glow"></div>
+<div class="bg-glow2"></div>
+
+<div class="container">
+    <!-- NAVBAR -->
+    <div class="navbar">
+        <div class="brand" onclick="window.location.reload()">V<span>Deploy</span></div>
+        <div class="badge">⬡ Instant Vercel Deployer</div>
+    </div>
+
+    <!-- TOKEN CARD -->
+    <div class="card">
+        <div class="card-title">Kredensial</div>
+        <div class="input-group">
+            <label for="vercelToken">Vercel API Token</label>
+            <input type="password" id="vercelToken" placeholder="Masukkan token API Vercel kamu...">
+            <div class="helper-text">
+                Token tersimpan aman di localStorage browser. &nbsp;
+                <a href="https://vercel.com/account/tokens" target="_blank">Buat Token Baru →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- DEPLOY CARD -->
+    <div class="card">
+        <div class="card-title">Deploy Berkas Baru</div>
+
+        <!-- Steps -->
+        <div class="steps">
+            <div class="step" id="ps1"></div>
+            <div class="step" id="ps2"></div>
+            <div class="step" id="ps3"></div>
+            <div class="step" id="ps4"></div>
+            <div class="step" id="ps5"></div>
+        </div>
+
+        <!-- Project Name -->
+        <div class="input-group">
+            <label for="projectName">Nama Project</label>
+            <input type="text" id="projectName" placeholder="nama-project-kamu">
+        </div>
+
+        <!-- Drop Zone -->
+        <div class="drop-zone" id="dropZone">
+            <span class="drop-icon" id="dropIcon">📂</span>
+            <div class="drop-text">Drop <strong>.html</strong> atau <strong>.zip</strong> di sini</div>
+            <div class="drop-subtext">atau klik untuk pilih berkas</div>
+            <input type="file" class="file-input" id="fileInput" accept=".html,.zip" onchange="handleFile(this)">
+        </div>
+
+        <!-- File Preview -->
+        <div class="file-preview" id="filePreview">
+            <div class="file-icon-big" id="fileIcon">🌐</div>
+            <div class="file-info">
+                <div class="file-name" id="fileName">file.zip</div>
+                <div class="file-meta" id="fileMeta">0 KB</div>
+            </div>
+            <button class="file-remove" onclick="removeFile()">× HAPUS</button>
+        </div>
+
+        <!-- Deploy Button -->
+        <button class="btn btn-primary" id="btnDeploy" onclick="startDeploy()" disabled>
+            ▶ &nbsp; JALANKAN DEPLOYMENT
+        </button>
+
+        <!-- Progress -->
+        <div class="progress-wrap" id="progressWrap">
+            <div class="progress-header">
+                <span class="progress-label" id="progressLabel">Menghubungkan...</span>
+                <span class="progress-pct" id="progressPct">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-milestones">
+                <span class="milestone" id="m0">INIT</span>
+                <span class="milestone" id="m1">UPLOAD</span>
+                <span class="milestone" id="m2">BUILD</span>
+                <span class="milestone" id="m3">DOMAIN</span>
+                <span class="milestone" id="m4">LIVE</span>
+            </div>
+        </div>
+
+        <!-- Terminal -->
+        <div class="terminal" id="terminalBody">
+            <div class="log-line muted">$ vdeploy init &nbsp;<span class="log-cursor"></span></div>
+        </div>
+
+        <!-- Result -->
+        <div class="result-card" id="resultCard">
+            <div class="result-label">DEPLOYMENT BERHASIL</div>
+            <div class="result-url" id="deployUrl"></div>
+            <div class="result-actions">
+                <button class="btn btn-copy" id="btnCopyDeploy" onclick="copyUrl()">
+                    ⎘ &nbsp; SALIN TAUTAN
+                </button>
+                <button class="btn btn-outline" id="openLink" onclick="window.open(this.getAttribute('data-url'), '_blank')">
+                    ↗ &nbsp; BUKA SITUS
+                </button>
+            </div>
+            <div class="result-time" id="resultTime"></div>
+        </div>
+    </div>
+
+    <!-- HISTORY CARD -->
+    <div class="card">
+        <div class="history-header">
+            <div class="card-title" style="margin-bottom:0">Riwayat Deploy</div>
+            <button class="btn-ghost" onclick="triggerClearHistory()">KOSONGKAN</button>
+        </div>
+        <div id="historyList"></div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="customModal">
+    <div class="modal-box">
+        <div class="modal-title" id="modalTitle">Konfirmasi</div>
+        <div class="modal-desc" id="modalDesc">Apakah Anda yakin?</div>
+        <div class="modal-buttons">
+            <button class="btn modal-cancel" onclick="closeModal()">Kembali</button>
+            <button class="btn modal-confirm" id="modalConfirmBtn">Lanjutkan</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Remove splash after animation
+    setTimeout(() => {
+        const s = document.getElementById('splash');
+        s.addEventListener('animationend', () => s.classList.add('hidden'));
+    }, 2800);
+
+    // ============ STATE ============
+    let selectedFile = null;
+    let deployHistory = JSON.parse(localStorage.getItem("vd_history") || "[]");
+
+    // ============ TOKEN ============
+    const tokenInput = document.getElementById("vercelToken");
+    const savedToken = localStorage.getItem("vd_token");
+    if (savedToken) tokenInput.value = savedToken;
+    tokenInput.addEventListener("input", () => localStorage.setItem("vd_token", tokenInput.value.trim()));
+
+    function getToken() {
+        const token = tokenInput.value.trim();
+        if (!token) throw new Error("Vercel API Token belum diisi!");
+        return token;
+    }
+
+    // ============ DROP ZONE ============
+    const dropZone = document.getElementById("dropZone");
+    dropZone.addEventListener("click", () => document.getElementById("fileInput").click());
+    dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+    dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("drag-over");
+        if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(input) { if (input.files[0]) processFile(input.files[0]); }
+
+    function processFile(file) {
+        const ext = file.name.split(".").pop().toLowerCase();
+        if (!["html", "zip"].includes(ext)) {
+            addLog("error", "✕ Format tidak didukung. Upload .html atau .zip saja.");
+            return;
+        }
+        selectedFile = file;
+        document.getElementById("filePreview").classList.add("active");
+        document.getElementById("fileName").textContent = file.name;
+        document.getElementById("fileMeta").textContent = (file.size / 1024).toFixed(1) + " KB · " + ext.toUpperCase();
+        document.getElementById("fileIcon").textContent = ext === "zip" ? "🗜️" : "🌐";
+        document.getElementById("dropIcon").textContent = ext === "zip" ? "🗜️" : "🌐";
+        document.getElementById("btnDeploy").disabled = false;
+        addLog("info", "✓ Berkas dipilih: " + file.name + " (" + (file.size / 1024).toFixed(1) + " KB)");
+        if (!document.getElementById("projectName").value) {
+            document.getElementById("projectName").value = file.name
+                .replace(/\.(html|zip)$/i, "").toLowerCase().replace(/[^a-z0-9-]/g, "-");
+        }
+    }
+
+    function removeFile() {
+        selectedFile = null;
+        document.getElementById("filePreview").classList.remove("active");
+        document.getElementById("fileInput").value = "";
+        document.getElementById("btnDeploy").disabled = true;
+        document.getElementById("dropIcon").textContent = "📂";
+        addLog("warn", "⚠ Berkas dibatalkan");
+    }
+
+    // ============ LOG & PROGRESS ============
+    function addLog(type, message) {
+        const terminal = document.getElementById("terminalBody");
+        const cursor = terminal.querySelector(".log-prompt-cursor");
+        if (cursor) cursor.remove();
+        const line = document.createElement("div");
+        line.className = "log-line " + type;
+        const time = new Date().toTimeString().slice(0, 8);
+        line.innerHTML = "<span style='color:#1e3a4a'>[" + time + "]</span> " + message;
+        terminal.appendChild(line);
+        const prompt = document.createElement("div");
+        prompt.className = "log-line muted log-prompt-cursor";
+        prompt.innerHTML = "$ <span class='log-cursor'></span>";
+        terminal.appendChild(prompt);
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    function setProgress(pct, label) {
+        document.getElementById("progressFill").style.width = pct + "%";
+        document.getElementById("progressPct").textContent = pct + "%";
+        document.getElementById("progressLabel").textContent = label;
+
+        // Update milestone markers
+        const thresholds = [0, 25, 50, 75, 100];
+        thresholds.forEach((t, i) => {
+            const el = document.getElementById("m" + i);
+            if (el) el.classList.toggle("passed", pct >= t);
+        });
+    }
+
+    function activateStep(id) {
+        const steps = ["ps1", "ps2", "ps3", "ps4", "ps5"];
+        steps.forEach((s, i) => {
+            const el = document.getElementById(s);
+            el.classList.remove("active", "done");
+            if (s === id) el.classList.add("active");
+            else if (steps.indexOf(id) > i) el.classList.add("done");
+        });
+    }
+
+    // ============ DEPLOY ============
+    async function startDeploy() {
+        if (!selectedFile) return;
+        let token;
+        try { token = getToken(); }
+        catch (e) {
+            addLog("error", "✕ " + e.message);
+            showCustomModal("Akses Ditolak", e.message, null, false);
+            return;
+        }
+
+        const btn = document.getElementById("btnDeploy");
+        btn.disabled = true;
+        btn.classList.add("btn-deploying");
+        btn.innerHTML = "⏳ &nbsp; SEDANG MENGIRIM...";
+        document.getElementById("resultCard").classList.remove("active");
+        document.getElementById("progressWrap").classList.add("active");
+        document.getElementById("terminalBody").innerHTML = "";
+
+        const projectName = document.getElementById("projectName").value || selectedFile.name.replace(/\.(html|zip)$/i, "");
+        const slug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "vdeploy-project";
+        const ext = selectedFile.name.split(".").pop().toLowerCase();
+        let files = [];
+
+        try {
+            // STEP 1
+            activateStep("ps1");
+            setProgress(8, "Mengemas berkas...");
+            addLog("info", "▶ Memulai proses deployment...");
+            await delay(350);
+
+            if (ext === "zip") {
+                addLog("info", "🗜 Mengekstrak ZIP di memory...");
+                files = await extractZip(selectedFile);
+                addLog("success", "✓ ZIP diurai: " + files.length + " file.");
+                files.forEach(f => addLog("muted", "  → " + f.file));
+            } else {
+                const content = await readFileAsText(selectedFile);
+                files = [{ file: "index.html", data: btoa(unescape(encodeURIComponent(content))), encoding: "base64" }];
+                addLog("success", "✓ HTML siap dimuat.");
+            }
+
+            // STEP 2
+            activateStep("ps2");
+            setProgress(28, "Mengunggah ke Vercel...");
+            addLog("info", "📤 Mengirim payload ke Vercel Cloud API...");
+            await delay(250);
+
+            const payload = {
+                name: slug,
+                files: files,
+                projectSettings: { framework: null, buildCommand: null, outputDirectory: null },
+                target: "production"
+            };
+
+            const res = await fetch("https://api.vercel.com/v13/deployments", {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+                throw new Error(err.error?.message || "HTTP status " + res.status);
+            }
+
+            const result = await res.json();
+            addLog("success", "✓ Deployment dibuat! ID: " + result.id);
+            addLog("muted", "  → URL alokasi: " + result.url);
+            setProgress(45, "Upload selesai, build dimulai...");
+
+            // STEP 3
+            activateStep("ps3");
+            addLog("info", "🔨 Menunggu Vercel memproses build...");
+
+            const deployId = result.id;
+            let state = result.readyState || "BUILDING";
+            let iteration = 0;
+
+            while (!["READY", "ERROR", "CANCELED"].includes(state)) {
+                await delay(2000);
+                iteration++;
+                try {
+                    const check = await fetch("https://api.vercel.com/v13/deployments/" + deployId, {
+                        headers: { "Authorization": "Bearer " + token }
+                    });
+                    const checkRes = await check.json();
+                    state = checkRes.readyState || state;
+
+                    // Smooth progress from 45 → 85 during build
+                    const buildPct = Math.min(45 + iteration * 1.8, 85);
+                    setProgress(Math.round(buildPct), "Build berjalan... " + (iteration * 2) + "s");
+                    addLog("muted", "  ↻ Status: " + state + " · " + (iteration * 2) + "s");
+                } catch (e) {
+                    addLog("muted", "  ↻ Sinkronisasi ulang...");
+                }
+            }
+
+            if (state === "ERROR") throw new Error("Build gagal! Periksa kelengkapan file HTML/ZIP.");
+            if (state === "CANCELED") throw new Error("Deployment dibatalkan dari Vercel.");
+
+            // STEP 4
+            activateStep("ps4");
+            setProgress(90, "Konfigurasi domain...");
+            addLog("info", "🌐 Mengambil domain resmi...");
+            await delay(300);
+
+            let domain = "https://" + slug + ".vercel.app";
+            try {
+                const projRes = await fetch("https://api.vercel.com/v9/projects/" + slug, {
+                    headers: { "Authorization": "Bearer " + token }
+                });
+                const projData = await projRes.json();
+                if (projData.alias && projData.alias.length > 0) {
+                    const aliases = projData.alias
+                        .map(a => typeof a === "string" ? a : (a.domain || ""))
+                        .filter(a => a.endsWith(".vercel.app"))
+                        .sort((a, b) => a.length - b.length);
+                    if (aliases.length > 0) {
+                        domain = "https://" + aliases[0];
+                        addLog("success", "  → Domain: " + aliases[0]);
+                    }
+                }
+            } catch (e) {
+                addLog("muted", "  → Memakai domain cadangan.");
+            }
+
+            // STEP 5
+            activateStep("ps5");
+            setProgress(100, "Selesai! 🚀");
+            addLog("success", "");
+            addLog("success", "▓▓▓ DEPLOYMENT BERHASIL! ▓▓▓");
+            addLog("success", "🔗 " + domain);
+            addLog("success", "══════════════════════════════");
+
+            document.getElementById("resultCard").classList.add("active");
+            const urlEl = document.getElementById("deployUrl");
+            const formattedUrl = domain.replace(
+                /^(https:\/\/)(.+?)(\.vercel\.app)(\/?.*)$/,
+                (_, p, sub, tld, path) =>
+                    "<span class='url-protocol'>" + p + "</span>" +
+                    "<span class='url-domain'>" + sub + "</span>" +
+                    "<span class='url-tld'>" + tld + "</span>" + path
+            );
+            urlEl.innerHTML = formattedUrl || domain;
+            urlEl.setAttribute("data-raw-url", domain);
+            document.getElementById("openLink").setAttribute("data-url", domain);
+            document.getElementById("resultTime").textContent =
+                "Ditayangkan " + new Date().toLocaleDateString("id-ID") + " · Proyek: " + slug;
+
+            saveHistory({ name: slug, url: domain, time: new Date().toISOString(), file: selectedFile.name });
+            renderHistory();
+
+        } catch (err) {
+            addLog("error", "✕ Error: " + err.message);
+            setProgress(0, "Deployment dibatalkan.");
+            document.getElementById("progressWrap").classList.remove("active");
+            ["ps1","ps2","ps3","ps4","ps5"].forEach(s => document.getElementById(s).classList.remove("active","done"));
+        } finally {
+            btn.disabled = false;
+            btn.classList.remove("btn-deploying");
+            btn.innerHTML = "▶ &nbsp; JALANKAN DEPLOYMENT";
+        }
+    }
+
+    // ============ HELPERS ============
+    function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+        });
+    }
+    function uint8ToBase64(bytes) {
+        let binary = "";
+        const chunk = 8192;
+        for (let i = 0; i < bytes.length; i += chunk)
+            binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+        return btoa(binary);
+    }
+    async function extractZip(file) {
+        const buffer = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(buffer);
+        const entries = Object.entries(zip.files).filter(([_, f]) => !f.dir);
+        let stripPrefix = "";
+        if (entries.length > 0) {
+            const prefix = entries[0][0].split("/")[0] + "/";
+            if (entries.length > 1 && entries.every(([p]) => p.startsWith(prefix))) stripPrefix = prefix;
+        }
+        addLog("muted", stripPrefix ? '  → Strip prefix: "' + stripPrefix + '"' : "  → Path murni, tanpa root.");
+        const files = [];
+        for (const [path, entry] of entries) {
+            const cleanPath = stripPrefix ? path.slice(stripPrefix.length) : path;
+            if (!cleanPath) continue;
+            const data = await entry.async("uint8array");
+            files.push({ file: cleanPath, data: uint8ToBase64(data), encoding: "base64" });
+        }
+        if (!files.some(f => f.file === "index.html"))
+            addLog("warn", "  ⚠ index.html tidak ditemukan di root ZIP!");
+        return files;
+    }
+
+    // ============ COPY ============
+    function copyUrl() {
+        const urlEl = document.getElementById("deployUrl");
+        const url = (urlEl.getAttribute("data-raw-url") || urlEl.textContent).trim();
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            const btn = document.getElementById("btnCopyDeploy");
+            const orig = btn.innerHTML;
+            btn.innerHTML = "✔ TERSALIN!";
+            setTimeout(() => { btn.innerHTML = orig; }, 2000);
+        } catch (err) {
+            document.body.removeChild(ta);
+            showCustomModal("Error", "Gagal menyalin. Salin manual: " + url, null, false);
+        }
+    }
+
+    // ============ MODAL ============
+    function showCustomModal(title, desc, confirmCallback, showConfirm = true) {
+        document.getElementById("modalTitle").textContent = title;
+        document.getElementById("modalDesc").textContent = desc;
+        const btn = document.getElementById("modalConfirmBtn");
+        btn.style.display = showConfirm ? "inline-flex" : "none";
+        btn.onclick = () => { if (confirmCallback) confirmCallback(); closeModal(); };
+        document.getElementById("customModal").classList.add("active");
+    }
+    function closeModal() { document.getElementById("customModal").classList.remove("active"); }
+    function triggerClearHistory() {
+        showCustomModal("Hapus Riwayat", "Hapus seluruh riwayat deployment dari penyimpanan lokal?", clearHistory);
+    }
+
+    // ============ HISTORY ============
+    function saveHistory(entry) {
+        deployHistory.unshift(entry);
+        localStorage.setItem("vd_history", JSON.stringify(deployHistory));
+    }
+    function renderHistory() {
+        const container = document.getElementById("historyList");
+        if (!deployHistory.length) {
+            container.innerHTML = "<div class='history-empty'>Belum ada riwayat deployment.</div>";
+            return;
+        }
+        container.innerHTML = deployHistory.map(item => `
+            <div class="history-item" onclick="window.open('${item.url}', '_blank')">
+                <div class="h-left">
+                    <div class="h-dot"></div>
+                    <div class="h-name">${item.file}</div>
+                </div>
+                <div class="h-time">${new Date(item.time).toLocaleDateString("id-ID")}</div>
+            </div>
+        `).join("");
+    }
+    function clearHistory() {
+        deployHistory = [];
+        localStorage.removeItem("vd_history");
+        renderHistory();
+    }
+
+    renderHistory();
+</script>
+</body>
+</html>
