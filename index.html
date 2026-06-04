@@ -1,1260 +1,1226 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VDeploy — Manajemen Vercel</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Orbitron:wght@400;600;700;900&display=swap');
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VDeploy — Manajemen Vercel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Orbitron:wght@400;600;700;900&display=swap">
+<style>
+:root{
+  --bg:#050a0e;--bg2:#080f14;--bg3:#0d1821;
+  --green:#00ff88;--blue:#00b4ff;--white:#e8f4f8;--muted:#4a6b7a;
+  --border:rgba(0,255,136,.25);--border-blue:rgba(0,180,255,.25);--red:#ff4455;
+  --font:'JetBrains Mono',monospace;--display:'Orbitron',sans-serif;
+  --sidebar-w:310px;
+  --trans:.2s cubic-bezier(.4,0,.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
 
-        :root {
-            --bg: #050a0e;
-            --bg2: #080f14;
-            --bg3: #0d1821;
-            --green: #00ff88;
-            --green-dim: #00c96a;
-            --green-glow: rgba(0,255,136,0.15);
-            --blue: #00b4ff;
-            --blue-dim: #0088cc;
-            --blue-glow: rgba(0,180,255,0.15);
-            --cyan: #00e5ff;
-            --white: #e8f4f8;
-            --muted: #4a6b7a;
-            --border: rgba(0,255,136,0.25);
-            --border-blue: rgba(0,180,255,0.25);
-            --red: #ff4455;
-            --font: 'JetBrains Mono', monospace;
-            --display: 'Orbitron', sans-serif;
-        }
+/* SPLASH */
+#splash{position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem}
+#splash.out{animation:splashOut .6s ease-in forwards}
+#splash.hidden{display:none}
+.splash-logo{font-family:var(--display);font-size:clamp(2.5rem,8vw,5rem);font-weight:900;letter-spacing:.1em;color:transparent;-webkit-text-stroke:1px var(--green);position:relative;animation:splashLogo 1s ease-out .2s both}
+.splash-logo::after{content:'VDEPLOY';position:absolute;inset:0;color:var(--green);clip-path:inset(0 100% 0 0);animation:revealText 1.2s ease-out .5s forwards;filter:drop-shadow(0 0 20px var(--green))}
+.splash-bar-wrap{width:clamp(200px,50vw,360px);height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.splash-bar{height:100%;background:linear-gradient(90deg,var(--green),var(--blue));animation:splashBar 2s ease-out .3s both;box-shadow:0 0 12px var(--green)}
+.splash-text{font-family:var(--font);font-size:.7rem;color:var(--muted);letter-spacing:.3em;text-transform:uppercase;animation:fadeInUp .6s ease .8s both}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+/* KEYFRAMES — consolidated */
+@keyframes splashLogo{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+@keyframes revealText{to{clip-path:inset(0 0% 0 0)}}
+@keyframes splashBar{from{width:0}to{width:100%}}
+@keyframes splashOut{to{opacity:0;pointer-events:none}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cursorBlink{50%{opacity:0}}
+@keyframes shimmer{to{left:200%}}
+@keyframes blobMove{to{transform:translate(-80px,100px) scale(1.1)}}
+@keyframes blobMove2{to{transform:translate(60px,-80px) scale(.9)}}
+@keyframes logIn{to{opacity:1}}
+@keyframes gradShift{to{background-position:200% 0}}
+@keyframes btnSweep{to{left:120%}}
+@keyframes progressGlow{0%,100%{opacity:.5}50%{opacity:1}}
 
-        /* ===== INTRO SPLASH ===== */
-        #splash {
-            position: fixed;
-            inset: 0;
-            background: #000;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 2rem;
-            animation: splashOut 0.6s ease-in 2.8s forwards;
-        }
-        #splash.hidden { display: none; }
+/* LAYOUT */
+body{font-family:var(--font);background:var(--bg);color:var(--white);min-height:100vh;display:flex;overflow-x:hidden;position:relative;will-change:auto}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,136,.012) 2px,rgba(0,255,136,.012) 4px);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,180,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,180,255,.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+.bg-glow{position:fixed;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(0,255,136,.04) 0%,transparent 70%);top:-200px;right:-200px;pointer-events:none;animation:blobMove 12s ease-in-out infinite alternate;z-index:0;will-change:transform}
+.bg-glow2{position:fixed;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(0,180,255,.05) 0%,transparent 70%);bottom:100px;left:-150px;pointer-events:none;animation:blobMove2 15s ease-in-out infinite alternate;z-index:0;will-change:transform}
 
-        .splash-logo {
-            font-family: var(--display);
-            font-size: clamp(2.5rem, 8vw, 5rem);
-            font-weight: 900;
-            letter-spacing: 0.1em;
-            color: transparent;
-            -webkit-text-stroke: 1px var(--green);
-            position: relative;
-            animation: splashLogo 1s ease-out 0.2s both;
-        }
-        .splash-logo::after {
-            content: 'VDEPLOY';
-            position: absolute;
-            inset: 0;
-            color: var(--green);
-            clip-path: inset(0 100% 0 0);
-            animation: revealText 1.2s ease-out 0.5s forwards;
-            filter: drop-shadow(0 0 20px var(--green));
-        }
+/* SIDEBAR */
+.sidebar{position:fixed;top:0;right:0;width:var(--sidebar-w);height:100vh;background:rgba(5,10,14,.98);border-left:1px solid var(--border-blue);z-index:500;transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;backdrop-filter:blur(16px);will-change:transform}
+.sidebar.open{transform:translateX(0)}
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:499;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(3px)}
+.sidebar-overlay.active{opacity:1;pointer-events:all}
+.sidebar-header{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid var(--border-blue);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sidebar-title{font-family:var(--display);font-size:.72rem;font-weight:700;letter-spacing:.2em;color:var(--blue);text-shadow:0 0 10px rgba(0,180,255,.4)}
+.sidebar-close{background:transparent;border:1px solid var(--border-blue);color:var(--blue);font-family:var(--font);font-size:.8rem;width:28px;height:28px;cursor:pointer;transition:all var(--trans);display:flex;align-items:center;justify-content:center}
+.sidebar-close:hover{background:rgba(0,180,255,.1);border-color:var(--blue)}
+.sidebar-search{padding:.75rem 1.25rem;border-bottom:1px solid rgba(0,180,255,.08);flex-shrink:0}
+.sidebar-search input{width:100%;background:var(--bg3);border:1px solid var(--border-blue);color:var(--blue);font-family:var(--font);font-size:.72rem;padding:.5rem .75rem;outline:none;transition:border-color var(--trans),box-shadow var(--trans)}
+.sidebar-search input::placeholder{color:var(--muted)}
+.sidebar-search input:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(0,180,255,.1)}
+.sidebar-list{flex:1;overflow-y:auto;padding:0;overscroll-behavior:contain}
+.sidebar-list::-webkit-scrollbar{width:3px}
+.sidebar-list::-webkit-scrollbar-thumb{background:var(--border-blue)}
+.sidebar-project{border-bottom:1px solid rgba(0,180,255,.08)}
+.sp-header{padding:.85rem 1.25rem .5rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:.5rem;transition:background var(--trans)}
+.sp-header:hover{background:rgba(0,180,255,.04)}
+.sp-name{font-size:.75rem;font-weight:600;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.sp-chevron{font-size:.6rem;color:var(--muted);transition:transform var(--trans);flex-shrink:0}
+.sidebar-project.expanded .sp-chevron{transform:rotate(180deg)}
+.sp-body{display:none;padding:0 1.25rem 1rem}
+.sidebar-project.expanded .sp-body{display:block}
+.sp-domain-list{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.6rem}
+.sp-domain-row{background:rgba(0,180,255,.05);border:1px solid rgba(0,180,255,.15);padding:.5rem .65rem}
+.sp-domain-text{font-size:.68rem;color:var(--blue);word-break:break-all;margin-bottom:.4rem;line-height:1.4}
+.sp-domain-btns{display:flex;gap:.3rem}
+.sp-btn{background:transparent;border:1px solid;font-family:var(--font);font-size:.58rem;font-weight:700;letter-spacing:.06em;padding:.22rem .5rem;cursor:pointer;transition:background var(--trans);text-transform:uppercase}
+.sp-btn-copy{color:var(--green);border-color:rgba(0,255,136,.3)}
+.sp-btn-copy:hover{background:rgba(0,255,136,.12)}
+.sp-btn-edit{color:var(--blue);border-color:rgba(0,180,255,.3)}
+.sp-btn-edit:hover{background:rgba(0,180,255,.12)}
+.sp-btn-del{color:var(--red);border-color:rgba(255,68,85,.3)}
+.sp-btn-del:hover{background:rgba(255,68,85,.12)}
+.sp-empty{font-size:.63rem;color:var(--muted);padding:.25rem 0 .5rem;font-style:italic}
+.sp-action-row{display:flex;gap:.4rem;margin-bottom:.6rem}
+.sp-action-btn{flex:1;background:transparent;border:1px solid;font-family:var(--font);font-size:.62rem;font-weight:700;letter-spacing:.08em;padding:.4rem .5rem;cursor:pointer;transition:background var(--trans),border-color var(--trans);text-transform:uppercase;text-align:center}
+.sp-action-btn.mode-edit{color:var(--blue);border-color:rgba(0,180,255,.35)}
+.sp-action-btn.mode-edit:hover,.sp-action-btn.mode-edit.active{background:rgba(0,180,255,.15);border-color:var(--blue)}
+.sp-action-btn.mode-add{color:var(--green);border-color:rgba(0,255,136,.35)}
+.sp-action-btn.mode-add:hover,.sp-action-btn.mode-add.active{background:rgba(0,255,136,.12);border-color:var(--green)}
+.sp-add-row{display:flex;gap:.35rem;margin-top:.5rem}
+.sp-add-input{flex:1;background:var(--bg3);border:1px dashed rgba(0,255,136,.2);color:var(--green);font-family:var(--font);font-size:.63rem;padding:.38rem .5rem;outline:none;min-width:0;transition:border var(--trans)}
+.sp-add-input:focus{border-color:var(--green);border-style:solid}
+.sp-add-input::placeholder{color:var(--muted);font-size:.6rem}
+.sp-add-btn{background:rgba(0,255,136,.08);border:1px solid var(--border);color:var(--green);font-family:var(--font);font-size:.6rem;font-weight:700;padding:.38rem .6rem;cursor:pointer;white-space:nowrap;transition:background var(--trans);text-transform:uppercase}
+.sp-add-btn:hover{background:rgba(0,255,136,.18)}
+.sidebar-empty{text-align:center;color:var(--muted);font-size:.72rem;padding:2.5rem 1rem}
+.sidebar-footer{padding:.75rem 1.25rem;border-top:1px solid var(--border-blue);flex-shrink:0}
+.sidebar-refresh{width:100%;background:transparent;border:1px solid var(--border-blue);color:var(--blue);font-family:var(--font);font-size:.65rem;letter-spacing:.1em;padding:.5rem;cursor:pointer;transition:background var(--trans)}
+.sidebar-refresh:hover{background:rgba(0,180,255,.08)}
 
-        .splash-bar-wrap {
-            width: clamp(200px, 50vw, 360px);
-            height: 3px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        .splash-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--green), var(--blue));
-            animation: splashBar 2s ease-out 0.3s both;
-            box-shadow: 0 0 12px var(--green);
-        }
-        .splash-text {
-            font-family: var(--font);
-            font-size: 0.7rem;
-            color: var(--muted);
-            letter-spacing: 0.3em;
-            text-transform: uppercase;
-            animation: fadeInUp 0.6s ease 0.8s both;
-        }
+/* MAIN */
+.main-wrap{flex:1;padding:2rem 1rem 4rem;display:flex;justify-content:center;align-items:flex-start;position:relative;z-index:1}
+.container{width:100%;max-width:700px;opacity:0;animation:fadeInUp .7s ease 3.2s forwards}
 
-        @keyframes splashLogo { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-        @keyframes revealText { to { clip-path: inset(0 0% 0 0); } }
-        @keyframes splashBar { from { width: 0; } to { width: 100%; } }
-        @keyframes splashOut { to { opacity: 0; pointer-events: none; } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+/* NAVBAR */
+.navbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:2.5rem;flex-wrap:wrap;gap:1rem}
+.brand{font-family:var(--display);font-size:1.8rem;font-weight:900;letter-spacing:.08em;color:var(--green);text-shadow:0 0 20px rgba(0,255,136,.5),0 0 40px rgba(0,255,136,.2);cursor:pointer;user-select:none;transition:text-shadow var(--trans),letter-spacing var(--trans);position:relative}
+.brand::before{content:'>';color:var(--blue);margin-right:.4rem;animation:cursorBlink 1s step-end infinite}
+.brand:hover{text-shadow:0 0 30px rgba(0,255,136,.8),0 0 60px rgba(0,255,136,.4);letter-spacing:.12em}
+.brand span{color:var(--blue)}
+.navbar-right{display:flex;align-items:center;gap:.75rem}
+.badge{font-size:.65rem;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--blue);border:1px solid var(--border-blue);padding:.4rem .9rem;background:rgba(0,180,255,.05);position:relative;overflow:hidden}
+.badge::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,180,255,.15),transparent);animation:shimmer 3s infinite}
+.btn-sidebar-open{background:rgba(0,180,255,.07);border:1px solid var(--border-blue);color:var(--blue);font-family:var(--font);font-size:.65rem;letter-spacing:.1em;padding:.4rem .85rem;cursor:pointer;transition:background var(--trans),box-shadow var(--trans);white-space:nowrap;text-transform:uppercase}
+.btn-sidebar-open:hover{background:rgba(0,180,255,.15);box-shadow:0 0 12px rgba(0,180,255,.15)}
 
-        /* ===== SCANLINE BACKGROUND ===== */
-        body {
-            font-family: var(--font);
-            background: var(--bg);
-            color: var(--white);
-            min-height: 100vh;
-            padding: 2rem 1rem 4rem;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            position: relative;
-            overflow-x: hidden;
-        }
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0,255,136,0.012) 2px,
-                rgba(0,255,136,0.012) 4px
-            );
-            pointer-events: none;
-            z-index: 0;
-        }
+/* CARD */
+.card{background:var(--bg2);border:1px solid var(--border);padding:1.75rem;margin-bottom:1.5rem;position:relative;overflow:hidden;transition:border-color var(--trans),box-shadow var(--trans)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0;transition:opacity var(--trans)}
+.card:hover::before{opacity:1}
+.card:hover{border-color:rgba(0,255,136,.4);box-shadow:0 0 30px rgba(0,255,136,.06),inset 0 0 30px rgba(0,255,136,.02)}
+.card::after{content:'';position:absolute;bottom:0;right:0;width:40px;height:40px;border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
+.card-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.25em;color:var(--green);margin-bottom:1.5rem;display:flex;align-items:center;gap:.6rem}
+.card-title::before{content:'';width:20px;height:1px;background:var(--green);box-shadow:0 0 8px var(--green)}
+.card-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
 
-        /* Grid lines background */
-        body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image:
-                linear-gradient(rgba(0,180,255,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,180,255,0.04) 1px, transparent 1px);
-            background-size: 48px 48px;
-            pointer-events: none;
-            z-index: 0;
-        }
+/* INPUTS */
+.input-group{margin-bottom:1.25rem}
+.input-group label{display:block;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.2em;color:var(--muted);margin-bottom:.5rem}
+.input-group input{width:100%;padding:.75rem 1rem;background:var(--bg3);border:1px solid var(--border);color:var(--green);font-size:.85rem;font-weight:500;font-family:var(--font);outline:none;transition:border-color var(--trans),box-shadow var(--trans),background var(--trans);caret-color:var(--green)}
+.input-group input:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(0,255,136,.1),0 0 20px rgba(0,255,136,.05);background:rgba(0,255,136,.03)}
+.input-group input::placeholder{color:var(--muted);font-size:.8rem}
+.helper-text{font-size:.7rem;color:var(--muted);margin-top:.4rem}
+.helper-text a{color:var(--blue);text-decoration:none}
 
-        /* Moving gradient blob */
-        .bg-glow {
-            position: fixed;
-            width: 600px;
-            height: 600px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(0,255,136,0.04) 0%, transparent 70%);
-            top: -200px;
-            right: -200px;
-            pointer-events: none;
-            animation: blobMove 12s ease-in-out infinite alternate;
-            z-index: 0;
-        }
-        .bg-glow2 {
-            position: fixed;
-            width: 400px;
-            height: 400px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(0,180,255,0.05) 0%, transparent 70%);
-            bottom: 100px;
-            left: -150px;
-            pointer-events: none;
-            animation: blobMove2 15s ease-in-out infinite alternate;
-            z-index: 0;
-        }
-        @keyframes blobMove { to { transform: translate(-80px, 100px) scale(1.1); } }
-        @keyframes blobMove2 { to { transform: translate(60px, -80px) scale(0.9); } }
+/* DROP ZONE */
+.drop-zone{border:1px dashed var(--border);padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:border-color var(--trans),background var(--trans),box-shadow var(--trans);margin-bottom:1.25rem;position:relative;background:rgba(0,255,136,.01)}
+.drop-zone:hover{border-color:var(--green);background:rgba(0,255,136,.04);box-shadow:0 0 30px rgba(0,255,136,.08)}
+.drop-zone.drag-over{border-color:var(--blue);background:rgba(0,180,255,.06)}
+.drop-zone::before,.drop-zone::after{content:'';position:absolute;width:16px;height:16px;border-color:var(--muted);border-style:solid;transition:border-color var(--trans)}
+.drop-zone::before{top:8px;left:8px;border-width:1px 0 0 1px}
+.drop-zone::after{bottom:8px;right:8px;border-width:0 1px 1px 0}
+.drop-zone:hover::before,.drop-zone:hover::after{border-color:var(--green)}
+.drop-icon{font-size:2.5rem;margin-bottom:.75rem;display:block;filter:drop-shadow(0 0 10px rgba(0,255,136,.3));transition:transform var(--trans)}
+.drop-zone:hover .drop-icon{transform:translateY(-6px) scale(1.05)}
+.drop-text{font-size:.85rem;font-weight:600;color:var(--white)}
+.drop-subtext{font-size:.7rem;color:var(--muted);margin-top:.3rem}
+.file-input{display:none}
 
-        .container {
-            width: 100%;
-            max-width: 700px;
-            position: relative;
-            z-index: 1;
-            opacity: 0;
-            animation: fadeInUp 0.7s ease 3.2s forwards;
-        }
+.file-preview{display:none;background:rgba(0,255,136,.03);border:1px solid var(--border);padding:1rem 1.25rem;margin-bottom:1.25rem;align-items:center;gap:1rem}
+.file-preview.active{display:flex}
+.file-icon-big{font-size:2rem;filter:drop-shadow(0 0 8px rgba(0,255,136,.4))}
+.file-info{flex:1;min-width:0}
+.file-name{font-weight:600;font-size:.85rem;color:var(--green);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-meta{font-size:.7rem;color:var(--muted);margin-top:.25rem}
+.file-remove{background:transparent;border:1px solid rgba(255,68,85,.4);color:var(--red);cursor:pointer;font-size:.75rem;font-family:var(--font);padding:.35rem .6rem;transition:background var(--trans),border-color var(--trans)}
+.file-remove:hover{background:rgba(255,68,85,.1);border-color:var(--red)}
 
-        /* ===== NAVBAR ===== */
-        .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2.5rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.85rem 1.5rem;border:1px solid var(--green);font-family:var(--font);font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.15em;cursor:pointer;transition:background var(--trans),box-shadow var(--trans),color var(--trans);width:100%;background:transparent;color:var(--green);position:relative;overflow:hidden}
+.btn::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,255,136,.15),transparent);transition:left .4s}
+.btn-primary{background:rgba(0,255,136,.08)}
+.btn-primary:hover:not(:disabled){background:rgba(0,255,136,.15);box-shadow:0 0 20px rgba(0,255,136,.2),inset 0 0 20px rgba(0,255,136,.05);color:#fff}
+.btn-primary:hover::before{left:100%}
+.btn-primary:active:not(:disabled){transform:scale(.99)}
+.btn-primary:disabled{border-color:var(--muted);color:var(--muted);cursor:not-allowed}
+.btn-primary:disabled::before{display:none}
+.btn-deploying{background:rgba(0,180,255,.1)!important;border-color:var(--blue)!important;color:var(--blue)!important}
+.btn-deploying::after{content:'';position:absolute;top:0;left:0;width:30%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,180,255,.3),transparent);animation:btnSweep 1.2s linear infinite}
 
-        .brand {
-            font-family: var(--display);
-            font-size: 1.8rem;
-            font-weight: 900;
-            letter-spacing: 0.08em;
-            color: var(--green);
-            text-shadow: 0 0 20px rgba(0,255,136,0.5), 0 0 40px rgba(0,255,136,0.2);
-            cursor: pointer;
-            user-select: none;
-            transition: all 0.3s;
-            position: relative;
-        }
-        .brand::before {
-            content: '>';
-            color: var(--blue);
-            margin-right: 0.4rem;
-            animation: cursorBlink 1s step-end infinite;
-        }
-        .brand:hover {
-            text-shadow: 0 0 30px rgba(0,255,136,0.8), 0 0 60px rgba(0,255,136,0.4);
-            letter-spacing: 0.12em;
-        }
-        .brand span { color: var(--blue); }
+/* PROGRESS */
+.progress-wrap{display:none;margin-top:1.25rem;background:var(--bg3);border:1px solid var(--border);padding:1rem 1.25rem}
+.progress-wrap.active{display:block}
+.progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+.progress-label{font-size:.7rem;font-weight:500;color:var(--muted);letter-spacing:.05em}
+.progress-pct{font-size:.8rem;font-weight:700;color:var(--green);font-family:var(--display);text-shadow:0 0 10px rgba(0,255,136,.5);min-width:50px;text-align:right}
+.progress-bar{height:6px;background:rgba(255,255,255,.04);position:relative;overflow:hidden}
+.progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--blue));transition:width .5s cubic-bezier(.1,.8,.2,1);position:relative;will-change:width}
+.progress-fill::after{content:'';position:absolute;top:0;right:0;width:40px;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6));animation:progressGlow 1.5s ease-in-out infinite}
 
-        @keyframes cursorBlink { 50% { opacity: 0; } }
+/* TERMINAL */
+.terminal{background:#020508;border:1px solid rgba(0,255,136,.1);padding:1.25rem;margin-top:1.25rem;max-height:260px;overflow-y:auto;font-family:var(--font);font-size:.72rem;line-height:1.7;color:#c8d8e0;position:relative;overscroll-behavior:contain}
+.terminal::before{content:'SYSTEM OUTPUT';position:absolute;top:0;right:12px;font-size:.55rem;color:var(--muted);letter-spacing:.2em;line-height:2}
+.terminal::-webkit-scrollbar{width:4px}
+.terminal::-webkit-scrollbar-thumb{background:var(--border)}
+.log-line{word-break:break-all;opacity:0;animation:logIn .15s ease forwards;padding-left:.25rem}
+.log-line.success{color:var(--green)}
+.log-line.error{color:var(--red)}
+.log-line.warn{color:#fc0}
+.log-line.info{color:var(--blue)}
+.log-line.muted{color:#3a5264}
+.log-cursor{display:inline-block;width:7px;height:12px;background:var(--green);vertical-align:middle;animation:cursorBlink .8s step-end infinite;box-shadow:0 0 8px var(--green)}
 
-        .badge {
-            font-size: 0.65rem;
-            font-weight: 600;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            color: var(--blue);
-            border: 1px solid var(--border-blue);
-            padding: 0.4rem 0.9rem;
-            background: rgba(0,180,255,0.05);
-            position: relative;
-            overflow: hidden;
-        }
-        .badge::after {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0,180,255,0.15), transparent);
-            animation: shimmer 3s infinite;
-        }
-        @keyframes shimmer { to { left: 200%; } }
+/* RESULT CARD */
+.result-card{display:none;margin-top:1.25rem;background:rgba(0,255,136,.03);border:1px solid rgba(0,255,136,.3);padding:1.5rem;position:relative}
+.result-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,var(--green),var(--blue),var(--green));background-size:200% 100%;animation:gradShift 3s linear infinite}
+.result-card.active{display:block;animation:fadeInUp .4s ease both}
+.result-label{font-size:.6rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:var(--green);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.result-label::before{content:'✓';font-size:.7rem}
+.result-url{font-size:.85rem;word-break:break-all;margin-bottom:1rem;color:var(--white);background:var(--bg3);padding:.85rem 1rem;border:1px solid var(--border);font-weight:500}
+.url-protocol{color:var(--muted)}
+.url-domain{color:var(--white)}
+.url-tld{color:var(--blue)}
+.result-actions{display:flex;gap:.6rem;margin-bottom:0}
+.result-actions .btn{width:auto;flex:1;padding:.65rem .6rem;font-size:.67rem;letter-spacing:.08em}
+.btn-copy{border-color:var(--green);color:var(--green);background:rgba(0,255,136,.06)}
+.btn-copy:hover{background:rgba(0,255,136,.15);box-shadow:0 0 15px rgba(0,255,136,.15)}
+.btn-edit-domain{border-color:var(--blue);color:var(--blue);background:rgba(0,180,255,.06)}
+.btn-edit-domain:hover{background:rgba(0,180,255,.15);box-shadow:0 0 15px rgba(0,180,255,.12)}
+.btn-open{border-color:rgba(0,255,136,.5);color:var(--green);background:rgba(0,255,136,.04)}
+.btn-open:hover{background:rgba(0,255,136,.12);box-shadow:0 0 15px rgba(0,255,136,.1)}
+.result-time{font-size:.65rem;color:var(--muted);margin-top:.85rem}
 
-        /* ===== CARD ===== */
-        .card {
-            background: var(--bg2);
-            border: 1px solid var(--border);
-            padding: 1.75rem;
-            margin-bottom: 1.5rem;
-            position: relative;
-            overflow: hidden;
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--green), transparent);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .card:hover::before { opacity: 1; }
-        .card:hover {
-            border-color: rgba(0,255,136,0.4);
-            box-shadow: 0 0 30px rgba(0,255,136,0.06), inset 0 0 30px rgba(0,255,136,0.02);
-        }
+.project-item{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.75rem 1rem;background:var(--bg3);border:1px solid rgba(0,255,136,.1);margin-bottom:.5rem;font-size:.75rem;transition:border-color var(--trans),background var(--trans)}
+.project-item:hover{border-color:var(--border);background:rgba(0,255,136,.03)}
+.project-info{flex:1;min-width:0}
+.project-name{font-weight:600;color:var(--green);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.project-updated{font-size:.65rem;color:var(--muted);margin-top:.25rem}
+.project-actions{display:flex;gap:.4rem}
+.btn-manage-domain{background:rgba(0,180,255,.06);border:1px solid rgba(0,180,255,.3);color:var(--blue);font-family:var(--font);font-size:.62rem;padding:.35rem .65rem;cursor:pointer;transition:background var(--trans),border-color var(--trans);white-space:nowrap;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.btn-manage-domain:hover{background:rgba(0,180,255,.15);border-color:var(--blue)}
+.btn-delete-project{background:transparent;border:1px solid rgba(255,68,85,.4);color:var(--red);font-family:var(--font);font-size:.62rem;padding:.35rem .65rem;cursor:pointer;transition:background var(--trans),border-color var(--trans);white-space:nowrap;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.btn-delete-project:hover{background:rgba(255,68,85,.15);border-color:var(--red)}
+.loading-projects{text-align:center;color:var(--muted);padding:2rem;font-size:.75rem}
+.history-header{display:flex;align-items:center;margin-bottom:1.5rem;gap:1rem}
+.refresh-btn{background:transparent;border:1px solid var(--border-blue);color:var(--blue);font-family:var(--font);font-size:.65rem;padding:.3rem .6rem;cursor:pointer;transition:background var(--trans),border-color var(--trans);margin-left:auto}
+.refresh-btn:hover{border-color:var(--blue);background:rgba(0,180,255,.08)}
 
-        /* Corner decorations */
-        .card::after {
-            content: '';
-            position: absolute;
-            bottom: 0; right: 0;
-            width: 40px; height: 40px;
-            border-bottom: 1px solid var(--border);
-            border-right: 1px solid var(--border);
-        }
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:999;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.active{display:flex}
+#customModal{z-index:1100}
+.modal-box{background:var(--bg2);border:1px solid rgba(255,68,85,.3);padding:2rem;max-width:480px;width:100%;animation:fadeInUp .25s ease both;position:relative;max-height:90vh;overflow-y:auto}
+.modal-box::-webkit-scrollbar{width:4px}
+.modal-box::-webkit-scrollbar-thumb{background:var(--border-blue)}
+.modal-box::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--red),transparent)}
+.modal-box.blue-modal{border-color:rgba(0,180,255,.3)}
+.modal-box.blue-modal::before{background:linear-gradient(90deg,transparent,var(--blue),transparent)}
+.modal-title{font-size:.65rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:var(--red);margin-bottom:1rem}
+.modal-title.blue{color:var(--blue)}
+.modal-desc{font-size:.8rem;color:var(--white);line-height:1.6;margin-bottom:1.25rem;font-weight:400}
+.modal-input{width:100%;background:var(--bg3);border:1px solid var(--border-blue);color:var(--blue);font-family:var(--font);font-size:.82rem;padding:.7rem .9rem;outline:none;margin-bottom:1.25rem;transition:border-color var(--trans),box-shadow var(--trans)}
+.modal-input:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(0,180,255,.1)}
+.modal-buttons{display:flex;gap:.75rem}
+.modal-buttons .btn{width:auto;flex:1;padding:.65rem;font-size:.7rem}
+.modal-cancel{border-color:var(--muted);color:var(--muted)}
+.modal-cancel:hover{border-color:var(--white);color:var(--white);background:rgba(255,255,255,.05)}
+.modal-confirm-red{border-color:var(--red);color:var(--red);background:rgba(255,68,85,.06)}
+.modal-confirm-red:hover{background:rgba(255,68,85,.15)}
+.modal-confirm-blue{border-color:var(--blue);color:var(--blue);background:rgba(0,180,255,.06)}
+.modal-confirm-blue:hover{background:rgba(0,180,255,.15)}
 
-        .card-title {
-            font-size: 0.65rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.25em;
-            color: var(--green);
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-        }
-        .card-title::before {
-            content: '';
-            width: 20px;
-            height: 1px;
-            background: var(--green);
-            box-shadow: 0 0 8px var(--green);
-        }
-        .card-title::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: linear-gradient(90deg, var(--border), transparent);
-        }
+/* DOMAIN MANAGER MODAL */
+.dm-tabs{display:flex;gap:0;margin-bottom:1.25rem;border:1px solid var(--border-blue)}
+.dm-tab{flex:1;padding:.6rem;font-family:var(--font);font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:transparent;border:none;cursor:pointer;transition:background var(--trans),box-shadow var(--trans)}
+.dm-tab.edit-tab{color:var(--blue)}
+.dm-tab.add-tab{color:var(--green)}
+.dm-tab.active.edit-tab{background:rgba(0,180,255,.15);box-shadow:inset 0 -2px 0 var(--blue)}
+.dm-tab.active.add-tab{background:rgba(0,255,136,.1);box-shadow:inset 0 -2px 0 var(--green)}
+.dm-tab:not(.active):hover{background:rgba(255,255,255,.03)}
+.dm-panel{display:none}
+.dm-panel.active{display:block}
+.dm-domain-list{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.85rem;max-height:220px;overflow-y:auto;overscroll-behavior:contain}
+.dm-domain-list::-webkit-scrollbar{width:3px}
+.dm-domain-list::-webkit-scrollbar-thumb{background:var(--border-blue)}
+.dm-domain-item{background:rgba(0,180,255,.05);border:1px solid rgba(0,180,255,.2);padding:.55rem .8rem;display:flex;align-items:center;gap:.5rem}
+.dm-domain-item.editing-inline{background:rgba(0,180,255,.1);border-color:var(--blue)}
+.dm-item-text{flex:1;font-size:.75rem;color:var(--blue);word-break:break-all;line-height:1.4}
+.dm-item-input{flex:1;background:var(--bg3);border:1px solid var(--blue);color:var(--blue);font-family:var(--font);font-size:.75rem;padding:.25rem .5rem;outline:none;display:none}
+.dm-item-input.show{display:block}
+.dm-item-text.hide{display:none}
+.dm-item-btns{display:flex;gap:.25rem;flex-shrink:0}
+.dm-ibtn{background:transparent;border:1px solid;font-family:var(--font);font-size:.55rem;font-weight:700;letter-spacing:.06em;padding:.2rem .45rem;cursor:pointer;transition:background var(--trans);text-transform:uppercase}
+.dm-ibtn-edit{color:var(--blue);border-color:rgba(0,180,255,.3)}
+.dm-ibtn-edit:hover{background:rgba(0,180,255,.1)}
+.dm-ibtn-save{color:var(--green);border-color:rgba(0,255,136,.3);display:none}
+.dm-ibtn-save.show{display:inline-flex}
+.dm-ibtn-save:hover{background:rgba(0,255,136,.1)}
+.dm-ibtn-del{color:var(--red);border-color:rgba(255,68,85,.3)}
+.dm-ibtn-del:hover{background:rgba(255,68,85,.1)}
+.dm-confirm-bar{display:none;margin-top:.4rem;background:rgba(255,68,85,.08);border:1px solid rgba(255,68,85,.3);padding:.45rem .65rem;align-items:center;justify-content:space-between;gap:.5rem}
+.dm-confirm-bar.show{display:flex}
+.dm-confirm-text{font-size:.63rem;color:var(--red);flex:1}
+.dm-confirm-btns{display:flex;gap:.3rem}
+.dm-cbtn{background:transparent;border:1px solid;font-family:var(--font);font-size:.58rem;font-weight:700;letter-spacing:.06em;padding:.2rem .45rem;cursor:pointer;transition:background var(--trans);text-transform:uppercase}
+.dm-cbtn-yes{color:var(--red);border-color:rgba(255,68,85,.4)}
+.dm-cbtn-yes:hover{background:rgba(255,68,85,.2)}
+.dm-cbtn-no{color:var(--muted);border-color:rgba(100,130,150,.3)}
+.dm-cbtn-no:hover{color:var(--white);border-color:var(--muted)}
+.dm-empty{font-size:.7rem;color:var(--muted);padding:.5rem 0;font-style:italic}
+.dm-add-row{display:flex;gap:.5rem;margin-bottom:.75rem}
+.dm-add-input{flex:1;background:var(--bg3);border:1px dashed rgba(0,255,136,.3);color:var(--green);font-family:var(--font);font-size:.78rem;padding:.65rem .85rem;outline:none;transition:border var(--trans),box-shadow var(--trans);min-width:0}
+.dm-add-input:focus{border-color:var(--green);border-style:solid;box-shadow:0 0 0 2px rgba(0,255,136,.1)}
+.dm-add-input::placeholder{color:var(--muted);font-size:.68rem}
+.dm-add-btn{background:rgba(0,255,136,.08);border:1px solid var(--border);color:var(--green);font-family:var(--font);font-size:.7rem;font-weight:700;letter-spacing:.08em;padding:.65rem .85rem;cursor:pointer;text-transform:uppercase;transition:background var(--trans),box-shadow var(--trans);white-space:nowrap}
+.dm-add-btn:hover{background:rgba(0,255,136,.18);box-shadow:0 0 12px rgba(0,255,136,.15)}
+.dm-section-label{font-size:.6rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--blue);margin-bottom:.6rem;display:flex;align-items:center;gap:.4rem}
+.dm-section-label::before{content:'◆';font-size:.45rem}
+.dm-divider{height:1px;background:rgba(0,180,255,.12);margin:1rem 0}
 
-        /* ===== INPUTS ===== */
-        .input-group { margin-bottom: 1.25rem; }
-        .input-group label {
-            display: block;
-            font-size: 0.65rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            color: var(--muted);
-            margin-bottom: 0.5rem;
-        }
-        .input-group input {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            background: var(--bg3);
-            border: 1px solid var(--border);
-            color: var(--green);
-            font-size: 0.85rem;
-            font-weight: 500;
-            font-family: var(--font);
-            outline: none;
-            transition: all 0.2s;
-            caret-color: var(--green);
-        }
-        .input-group input:focus {
-            border-color: var(--green);
-            box-shadow: 0 0 0 2px rgba(0,255,136,0.1), 0 0 20px rgba(0,255,136,0.05);
-            background: rgba(0,255,136,0.03);
-        }
-        .input-group input::placeholder { color: var(--muted); font-size: 0.8rem; }
-        .helper-text { font-size: 0.7rem; color: var(--muted); margin-top: 0.4rem; }
-        .helper-text a { color: var(--blue); text-decoration: none; }
-        .helper-text a:hover { text-shadow: 0 0 10px var(--blue); }
-
-        /* ===== DROP ZONE ===== */
-        .drop-zone {
-            border: 1px dashed var(--border);
-            padding: 2.5rem 1.5rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 1.25rem;
-            position: relative;
-            background: rgba(0,255,136,0.01);
-        }
-        .drop-zone:hover {
-            border-color: var(--green);
-            background: rgba(0,255,136,0.04);
-            box-shadow: 0 0 30px rgba(0,255,136,0.08);
-        }
-        .drop-zone.drag-over {
-            border-color: var(--blue);
-            background: rgba(0,180,255,0.06);
-            box-shadow: 0 0 40px rgba(0,180,255,0.15);
-        }
-
-        /* Corner ticks on drop zone */
-        .drop-zone::before, .drop-zone::after {
-            content: '';
-            position: absolute;
-            width: 16px; height: 16px;
-            border-color: var(--muted);
-            border-style: solid;
-            transition: border-color 0.3s;
-        }
-        .drop-zone::before { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
-        .drop-zone::after { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
-        .drop-zone:hover::before, .drop-zone:hover::after { border-color: var(--green); }
-
-        .drop-icon {
-            font-size: 2.5rem;
-            margin-bottom: 0.75rem;
-            display: block;
-            filter: drop-shadow(0 0 10px rgba(0,255,136,0.3));
-            transition: transform 0.3s;
-        }
-        .drop-zone:hover .drop-icon { transform: translateY(-6px) scale(1.05); }
-
-        .drop-text { font-size: 0.85rem; font-weight: 600; color: var(--white); }
-        .drop-subtext { font-size: 0.7rem; color: var(--muted); margin-top: 0.3rem; letter-spacing: 0.05em; }
-        .file-input { display: none; }
-
-        /* ===== FILE PREVIEW ===== */
-        .file-preview {
-            display: none;
-            background: rgba(0,255,136,0.03);
-            border: 1px solid var(--border);
-            padding: 1rem 1.25rem;
-            margin-bottom: 1.25rem;
-            align-items: center;
-            gap: 1rem;
-            animation: fadeInUp 0.3s ease both;
-        }
-        .file-preview.active { display: flex; }
-        .file-icon-big {
-            font-size: 2rem;
-            filter: drop-shadow(0 0 8px rgba(0,255,136,0.4));
-        }
-        .file-info { flex: 1; min-width: 0; }
-        .file-name { font-weight: 600; font-size: 0.85rem; color: var(--green); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .file-meta { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
-        .file-remove {
-            background: transparent;
-            border: 1px solid rgba(255,68,85,0.4);
-            color: var(--red);
-            cursor: pointer;
-            font-size: 0.75rem;
-            font-family: var(--font);
-            padding: 0.35rem 0.6rem;
-            transition: all 0.2s;
-        }
-        .file-remove:hover { background: rgba(255,68,85,0.1); border-color: var(--red); box-shadow: 0 0 10px rgba(255,68,85,0.2); }
-
-        /* ===== BUTTONS ===== */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 0.85rem 1.5rem;
-            border: 1px solid var(--green);
-            font-family: var(--font);
-            font-size: 0.8rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            cursor: pointer;
-            transition: all 0.2s;
-            width: 100%;
-            background: transparent;
-            color: var(--green);
-            position: relative;
-            overflow: hidden;
-        }
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0,255,136,0.15), transparent);
-            transition: left 0.4s;
-        }
-        .btn-primary { background: rgba(0,255,136,0.08); }
-        .btn-primary:hover:not(:disabled) {
-            background: rgba(0,255,136,0.15);
-            box-shadow: 0 0 20px rgba(0,255,136,0.2), inset 0 0 20px rgba(0,255,136,0.05);
-            color: #fff;
-        }
-        .btn-primary:hover::before { left: 100%; }
-        .btn-primary:active:not(:disabled) { transform: scale(0.99); }
-        .btn-primary:disabled {
-            border-color: var(--muted);
-            color: var(--muted);
-            cursor: not-allowed;
-        }
-        .btn-primary:disabled::before { display: none; }
-
-        /* Deploying animation */
-        .btn-deploying {
-            background: rgba(0,180,255,0.1) !important;
-            border-color: var(--blue) !important;
-            color: var(--blue) !important;
-        }
-        .btn-deploying::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0;
-            width: 30%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0,180,255,0.3), transparent);
-            animation: btnSweep 1.2s linear infinite;
-        }
-        @keyframes btnSweep { to { left: 120%; } }
-
-        /* ===== PROGRESS ===== */
-        .progress-wrap {
-            display: none;
-            margin-top: 1.25rem;
-            background: var(--bg3);
-            border: 1px solid var(--border);
-            padding: 1rem 1.25rem;
-        }
-        .progress-wrap.active { display: block; }
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.75rem;
-        }
-        .progress-label {
-            font-size: 0.7rem;
-            font-weight: 500;
-            color: var(--muted);
-            letter-spacing: 0.05em;
-        }
-        .progress-pct {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--green);
-            font-family: var(--display);
-            letter-spacing: 0.05em;
-            text-shadow: 0 0 10px rgba(0,255,136,0.5);
-            transition: all 0.3s;
-            min-width: 50px;
-            text-align: right;
-        }
-        .progress-bar {
-            height: 6px;
-            background: rgba(255,255,255,0.04);
-            position: relative;
-            overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, var(--green), var(--blue));
-            transition: width 0.5s cubic-bezier(0.1, 0.8, 0.2, 1);
-            position: relative;
-        }
-        .progress-fill::after {
-            content: '';
-            position: absolute;
-            top: 0; right: 0;
-            width: 40px; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6));
-            animation: progressGlow 1.5s ease-in-out infinite;
-        }
-        @keyframes progressGlow { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
-
-        /* ===== TERMINAL ===== */
-        .terminal {
-            background: #020508;
-            border: 1px solid rgba(0,255,136,0.1);
-            padding: 1.25rem;
-            margin-top: 1.25rem;
-            max-height: 260px;
-            overflow-y: auto;
-            font-family: var(--font);
-            font-size: 0.72rem;
-            line-height: 1.7;
-            color: #c8d8e0;
-            position: relative;
-        }
-        .terminal::before {
-            content: 'SYSTEM OUTPUT';
-            position: absolute;
-            top: 0; right: 12px;
-            font-size: 0.55rem;
-            color: var(--muted);
-            letter-spacing: 0.2em;
-            line-height: 2;
-        }
-        .terminal::-webkit-scrollbar { width: 4px; }
-        .terminal::-webkit-scrollbar-track { background: transparent; }
-        .terminal::-webkit-scrollbar-thumb { background: var(--border); }
-
-        .log-line {
-            word-break: break-all;
-            opacity: 0;
-            animation: logIn 0.15s ease forwards;
-            padding-left: 0.25rem;
-        }
-        @keyframes logIn { to { opacity: 1; } }
-        .log-line.success { color: var(--green); }
-        .log-line.error { color: var(--red); }
-        .log-line.warn { color: #ffcc00; }
-        .log-line.info { color: var(--blue); }
-        .log-line.muted { color: #3a5264; }
-        .log-cursor {
-            display: inline-block;
-            width: 7px;
-            height: 12px;
-            background: var(--green);
-            vertical-align: middle;
-            animation: cursorBlink 0.8s step-end infinite;
-            box-shadow: 0 0 8px var(--green);
-        }
-
-        /* ===== RESULT ===== */
-        .result-card {
-            display: none;
-            margin-top: 1.25rem;
-            background: rgba(0,255,136,0.03);
-            border: 1px solid rgba(0,255,136,0.3);
-            padding: 1.5rem;
-            animation: fadeInUp 0.4s ease both;
-            position: relative;
-        }
-        .result-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, var(--green), var(--blue), var(--green));
-            background-size: 200% 100%;
-            animation: gradShift 3s linear infinite;
-        }
-        @keyframes gradShift { to { background-position: 200% 0; } }
-        .result-card.active { display: block; }
-
-        .result-label {
-            font-size: 0.6rem;
-            font-weight: 700;
-            letter-spacing: 0.25em;
-            text-transform: uppercase;
-            color: var(--green);
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .result-label::before { content: '✓'; font-size: 0.7rem; }
-
-        .result-url {
-            font-size: 0.85rem;
-            word-break: break-all;
-            margin-bottom: 1rem;
-            color: var(--white);
-            background: var(--bg3);
-            padding: 0.85rem 1rem;
-            border: 1px solid var(--border);
-            font-weight: 500;
-        }
-        .url-protocol { color: var(--muted); }
-        .url-domain { color: var(--white); }
-        .url-tld { color: var(--blue); }
-
-        .result-actions { display: flex; gap: 0.75rem; }
-        .result-actions .btn { width: auto; flex: 1; padding: 0.65rem 1rem; font-size: 0.7rem; }
-        .btn-copy { border-color: var(--green); color: var(--green); background: rgba(0,255,136,0.06); }
-        .btn-copy:hover { background: rgba(0,255,136,0.15); box-shadow: 0 0 15px rgba(0,255,136,0.15); }
-        .btn-outline { border-color: var(--blue); color: var(--blue); background: rgba(0,180,255,0.05); }
-        .btn-outline:hover { background: rgba(0,180,255,0.12); box-shadow: 0 0 15px rgba(0,180,255,0.12); }
-
-        .result-time { font-size: 0.65rem; color: var(--muted); margin-top: 0.85rem; letter-spacing: 0.05em; }
-
-        /* ===== PROJECT LIST & DELETE ===== */
-        .project-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-            padding: 0.75rem 1rem;
-            background: var(--bg3);
-            border: 1px solid rgba(0,255,136,0.1);
-            margin-bottom: 0.5rem;
-            font-size: 0.75rem;
-            transition: all 0.2s;
-        }
-        .project-item:hover { border-color: var(--border); background: rgba(0,255,136,0.03); }
-        .project-info {
-            flex: 1;
-            min-width: 0;
-        }
-        .project-name {
-            font-weight: 600;
-            color: var(--green);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .project-updated {
-            font-size: 0.65rem;
-            color: var(--muted);
-            margin-top: 0.25rem;
-        }
-        .btn-delete-project {
-            background: transparent;
-            border: 1px solid rgba(255,68,85,0.4);
-            color: var(--red);
-            font-family: var(--font);
-            font-size: 0.65rem;
-            letter-spacing: 0.05em;
-            padding: 0.4rem 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-        .btn-delete-project:hover {
-            background: rgba(255,68,85,0.15);
-            border-color: var(--red);
-            box-shadow: 0 0 10px rgba(255,68,85,0.2);
-        }
-        .loading-projects {
-            text-align: center;
-            color: var(--muted);
-            padding: 2rem;
-            font-size: 0.75rem;
-        }
-        .refresh-btn {
-            background: transparent;
-            border: 1px solid var(--border-blue);
-            color: var(--blue);
-            font-family: var(--font);
-            font-size: 0.65rem;
-            padding: 0.3rem 0.6rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-left: auto;
-        }
-        .refresh-btn:hover {
-            border-color: var(--blue);
-            background: rgba(0,180,255,0.08);
-        }
-
-        /* ===== MODAL ===== */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(4px);
-            z-index: 999;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-        }
-        .modal-overlay.active { display: flex; }
-        .modal-box {
-            background: var(--bg2);
-            border: 1px solid rgba(255,68,85,0.3);
-            padding: 2rem;
-            max-width: 420px;
-            width: 100%;
-            animation: fadeInUp 0.25s ease both;
-            position: relative;
-        }
-        .modal-box::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--red), transparent);
-        }
-        .modal-title {
-            font-size: 0.65rem;
-            font-weight: 700;
-            letter-spacing: 0.25em;
-            text-transform: uppercase;
-            color: var(--red);
-            margin-bottom: 1rem;
-        }
-        .modal-desc { font-size: 0.8rem; color: var(--white); line-height: 1.6; margin-bottom: 1.5rem; font-weight: 400; }
-        .modal-buttons { display: flex; gap: 0.75rem; }
-        .modal-buttons .btn { width: auto; flex: 1; padding: 0.65rem; font-size: 0.7rem; }
-        .modal-cancel { border-color: var(--muted); color: var(--muted); }
-        .modal-cancel:hover { border-color: var(--white); color: var(--white); background: rgba(255,255,255,0.05); }
-        .modal-confirm { border-color: var(--red); color: var(--red); background: rgba(255,68,85,0.06); }
-        .modal-confirm:hover { background: rgba(255,68,85,0.15); box-shadow: 0 0 15px rgba(255,68,85,0.2); }
-    </style>
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg2);border:1px solid var(--green);color:var(--green);font-family:var(--font);font-size:.72rem;letter-spacing:.08em;padding:.65rem 1.25rem;z-index:9998;transition:transform .3s cubic-bezier(.4,0,.2,1),opacity .3s;opacity:0;box-shadow:0 0 20px rgba(0,255,136,.15);white-space:nowrap;max-width:90vw}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.blue-t{border-color:var(--blue);color:var(--blue);box-shadow:0 0 20px rgba(0,180,255,.15)}
+</style>
 </head>
 <body>
 
-<!-- SPLASH SCREEN -->
 <div id="splash">
-    <div class="splash-logo">VDEPLOY</div>
-    <div class="splash-bar-wrap"><div class="splash-bar"></div></div>
-    <div class="splash-text">Initializing deployment engine...</div>
+  <div class="splash-logo">VDEPLOY</div>
+  <div class="splash-bar-wrap"><div class="splash-bar"></div></div>
+  <div class="splash-text">Initializing deployment engine...</div>
 </div>
 
 <div class="bg-glow"></div>
 <div class="bg-glow2"></div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-<div class="container">
-    <!-- NAVBAR -->
-    <div class="navbar">
-        <div class="brand" onclick="window.location.reload()">V<span>Deploy</span></div>
-        <div class="badge">⬡ Vercel Manager</div>
-    </div>
-
-    <!-- TOKEN CARD -->
-    <div class="card">
-        <div class="card-title">Kredensial</div>
-        <div class="input-group">
-            <label for="vercelToken">Vercel API Token</label>
-            <input type="password" id="vercelToken" placeholder="Masukkan token API Vercel kamu...">
-            <div class="helper-text">
-                Token tersimpan aman di localStorage browser. &nbsp;
-                <a href="https://vercel.com/account/tokens" target="_blank">Buat Token Baru →</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- DEPLOY CARD -->
-    <div class="card">
-        <div class="card-title">Deploy Berkas Baru</div>
-
-        <!-- Project Name -->
-        <div class="input-group">
-            <label for="projectName">Nama Project</label>
-            <input type="text" id="projectName" placeholder="nama-project-kamu">
-        </div>
-
-        <!-- Drop Zone -->
-        <div class="drop-zone" id="dropZone">
-            <span class="drop-icon" id="dropIcon">📂</span>
-            <div class="drop-text">Drop <strong>.html</strong> atau <strong>.zip</strong> di sini</div>
-            <div class="drop-subtext">atau klik untuk pilih berkas</div>
-            <input type="file" class="file-input" id="fileInput" accept=".html,.zip" onchange="handleFile(this)">
-        </div>
-
-        <!-- File Preview -->
-        <div class="file-preview" id="filePreview">
-            <div class="file-icon-big" id="fileIcon">🌐</div>
-            <div class="file-info">
-                <div class="file-name" id="fileName">file.zip</div>
-                <div class="file-meta" id="fileMeta">0 KB</div>
-            </div>
-            <button class="file-remove" onclick="removeFile()">× HAPUS</button>
-        </div>
-
-        <!-- Deploy Button -->
-        <button class="btn btn-primary" id="btnDeploy" onclick="startDeploy()" disabled>
-            ▶ &nbsp; JALANKAN DEPLOYMENT
-        </button>
-
-        <!-- Progress -->
-        <div class="progress-wrap" id="progressWrap">
-            <div class="progress-header">
-                <span class="progress-label" id="progressLabel">Menghubungkan...</span>
-                <span class="progress-pct" id="progressPct">0%</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-        </div>
-
-        <!-- Terminal -->
-        <div class="terminal" id="terminalBody">
-            <div class="log-line muted">$ vdeploy init &nbsp;<span class="log-cursor"></span></div>
-        </div>
-
-        <!-- Result -->
-        <div class="result-card" id="resultCard">
-            <div class="result-label">DEPLOYMENT BERHASIL</div>
-            <div class="result-url" id="deployUrl"></div>
-            <div class="result-actions">
-                <button class="btn btn-copy" id="btnCopyDeploy" onclick="copyUrl()">⎘ &nbsp; SALIN TAUTAN</button>
-                <button class="btn btn-outline" id="openLink" onclick="window.open(this.getAttribute('data-url'), '_blank')">↗ &nbsp; BUKA SITUS</button>
-            </div>
-            <div class="result-time" id="resultTime"></div>
-        </div>
-    </div>
-
-    <!-- PROJECT LIST & DELETE CARD -->
-    <div class="card">
-        <div class="history-header">
-            <div class="card-title" style="margin-bottom:0">Project Vercel</div>
-            <button class="refresh-btn" onclick="fetchAllProjects()">⟳ MUAT ULANG</button>
-        </div>
-        <div id="projectListContainer"></div>
-    </div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-title">◆ CUSTOM DOMAINS</div>
+    <button class="sidebar-close" id="btnCloseSidebar">✕</button>
+  </div>
+  <div class="sidebar-search">
+    <input type="text" id="sidebarSearch" placeholder="Cari project...">
+  </div>
+  <div class="sidebar-list" id="sidebarProjectList">
+    <div class="sidebar-empty">Masukkan token untuk melihat project</div>
+  </div>
+  <div class="sidebar-footer">
+    <button class="sidebar-refresh" id="btnSyncDomains">⟳ &nbsp; SINKRONISASI DOMAIN</button>
+  </div>
 </div>
 
-<!-- MODAL -->
-<div class="modal-overlay" id="customModal">
-    <div class="modal-box">
-        <div class="modal-title" id="modalTitle">Konfirmasi</div>
-        <div class="modal-desc" id="modalDesc">Apakah Anda yakin?</div>
-        <div class="modal-buttons">
-            <button class="btn modal-cancel" onclick="closeModal()">Kembali</button>
-            <button class="btn modal-confirm" id="modalConfirmBtn">Lanjutkan</button>
-        </div>
+<div class="toast" id="toast"></div>
+
+<div class="main-wrap">
+<div class="container">
+  <div class="navbar">
+    <div class="brand" id="brandLogo">V<span>Deploy</span></div>
+    <div class="navbar-right">
+      <button class="btn-sidebar-open" id="btnOpenSidebar">⬡ &nbsp; CUSTOM DOMAINS</button>
+      <div class="badge">⬡ Vercel Manager</div>
     </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Kredensial</div>
+    <div class="input-group">
+      <label for="vercelToken">Vercel API Token</label>
+      <input type="password" id="vercelToken" placeholder="Masukkan token API Vercel kamu...">
+      <div class="helper-text">Token tersimpan aman di localStorage. &nbsp;<a href="https://vercel.com/account/tokens" target="_blank">Buat Token Baru →</a></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Deploy Berkas Baru</div>
+    <div class="input-group">
+      <label for="projectName">Nama Project</label>
+      <input type="text" id="projectName" placeholder="nama-project-kamu">
+    </div>
+    <div class="drop-zone" id="dropZone">
+      <span class="drop-icon" id="dropIcon">📂</span>
+      <div class="drop-text">Drop <strong>.html</strong> atau <strong>.zip</strong> di sini</div>
+      <div class="drop-subtext">atau klik untuk pilih berkas</div>
+      <input type="file" class="file-input" id="fileInput" accept=".html,.zip">
+    </div>
+    <div class="file-preview" id="filePreview">
+      <div class="file-icon-big" id="fileIcon">🌐</div>
+      <div class="file-info">
+        <div class="file-name" id="fileName">file.zip</div>
+        <div class="file-meta" id="fileMeta">0 KB</div>
+      </div>
+      <button class="file-remove" id="btnRemoveFile">× HAPUS</button>
+    </div>
+    <button class="btn btn-primary" id="btnDeploy" disabled>▶ &nbsp; JALANKAN DEPLOYMENT</button>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-header">
+        <span class="progress-label" id="progressLabel">Menghubungkan...</span>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+    <div class="terminal" id="terminalBody">
+      <div class="log-line muted">$ vdeploy init &nbsp;<span class="log-cursor"></span></div>
+    </div>
+    <div class="result-card" id="resultCard">
+      <div class="result-label">DEPLOYMENT BERHASIL</div>
+      <div class="result-url" id="deployUrl"></div>
+      <div class="result-actions">
+        <button class="btn btn-copy" id="btnCopyDeploy">⎘ &nbsp; SALIN TAUTAN</button>
+        <button class="btn btn-edit-domain" id="btnEditDomainResult">✎ &nbsp; EDIT DOMAIN</button>
+        <button class="btn btn-open" id="openLink">↗ &nbsp; BUKA SITUS</button>
+      </div>
+      <div class="result-time" id="resultTime"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="history-header">
+      <div class="card-title" style="margin-bottom:0">Project Vercel</div>
+      <button class="refresh-btn" id="btnRefreshProjects">⟳ MUAT ULANG</button>
+    </div>
+    <div id="projectListContainer"></div>
+  </div>
+</div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="customModal">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-title" id="modalTitle">Konfirmasi</div>
+    <div class="modal-desc" id="modalDesc">Apakah Anda yakin?</div>
+    <input type="text" class="modal-input" id="modalInput" style="display:none" placeholder="">
+    <div class="modal-buttons">
+      <button class="btn modal-cancel" id="btnModalCancel">Kembali</button>
+      <button class="btn" id="modalConfirmBtn">Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Domain Manager Modal -->
+<div class="modal-overlay" id="domainManagerModal">
+  <div class="modal-box blue-modal" style="max-width:500px">
+    <div class="modal-title blue" id="dmTitle">◆ KELOLA DOMAIN</div>
+    <div class="dm-tabs">
+      <button class="dm-tab edit-tab active" id="dmTabEdit">✎ &nbsp; EDIT DOMAIN</button>
+      <button class="dm-tab add-tab" id="dmTabAdd">+ &nbsp; TAMBAH DOMAIN</button>
+    </div>
+    <div class="dm-panel active" id="dmPanelEdit">
+      <div class="dm-section-label">Custom Domain</div>
+      <div class="dm-domain-list" id="dmDomainList"></div>
+    </div>
+    <div class="dm-panel" id="dmPanelAdd">
+      <div class="dm-section-label">Tambah Custom Domain Baru</div>
+      <div class="dm-add-row">
+        <input type="text" class="dm-add-input" id="dmAddInput" placeholder="contoh.com atau sub.domain.com">
+        <button class="dm-add-btn" id="btnDmAdd">+ TAMBAH</button>
+      </div>
+      <div style="font-size:.68rem;color:var(--muted);line-height:1.6">
+        Domain akan ditambahkan ke project <span id="dmProjectNameHint" style="color:var(--blue)"></span>.
+      </div>
+    </div>
+    <div style="margin-top:1.25rem">
+      <button class="btn modal-cancel" id="btnCloseDomainModal" style="width:100%;padding:.65rem">TUTUP</button>
+    </div>
+  </div>
 </div>
 
 <script>
-    // Remove splash after animation
-    setTimeout(() => {
-        const s = document.getElementById('splash');
-        s.addEventListener('animationend', () => s.classList.add('hidden'));
-    }, 2800);
+(function(){
+'use strict';
 
-    // ============ STATE ============
-    let selectedFile = null;
-    let deployHistory = JSON.parse(localStorage.getItem("vd_history") || "[]");
-    let currentProjects = [];
+/* ── SPLASH ── */
+const splash = document.getElementById('splash');
+setTimeout(() => {
+  splash.classList.add('out');
+  splash.addEventListener('animationend', () => splash.classList.add('hidden'), {once:true});
+}, 2800);
 
-    // ============ TOKEN ============
-    const tokenInput = document.getElementById("vercelToken");
-    const savedToken = localStorage.getItem("vd_token");
-    if (savedToken) tokenInput.value = savedToken;
-    tokenInput.addEventListener("input", () => {
-        localStorage.setItem("vd_token", tokenInput.value.trim());
-        // Auto refresh projects on token change
-        fetchAllProjects();
+/* ── UTILS ── */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const delay = ms => new Promise(r => setTimeout(r, ms));
+const readText = f => new Promise((res,rej) => { const r = new FileReader; r.onload = e => res(e.target.result); r.onerror = rej; r.readAsText(f); });
+
+function uint8ToB64(bytes) {
+  let b = '', chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk)
+    b += String.fromCharCode(...bytes.subarray(i, Math.min(i+chunk, bytes.length)));
+  return btoa(b);
+}
+
+async function extractZip(file) {
+  const buf = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(buf);
+  const entries = Object.entries(zip.files).filter(([,f]) => !f.dir);
+  let sp = '';
+  if (entries.length > 1) {
+    const prefix = entries[0][0].split('/')[0] + '/';
+    if (entries.every(([p]) => p.startsWith(prefix))) sp = prefix;
+  }
+  const out = [];
+  for (const [path, entry] of entries) {
+    const cp = sp ? path.slice(sp.length) : path;
+    if (!cp) continue;
+    const data = await entry.async('uint8array');
+    out.push({ file: cp, data: uint8ToB64(data), encoding: 'base64' });
+  }
+  return out;
+}
+
+/* ── STATE ── */
+let selectedFile = null;
+let currentProjects = [];
+let currentDeploySlug = null;
+let currentDeployUrl = null;
+let domainManagerCtx = null;
+let toastTimer = null;
+let pendingDeleteProject = null;
+
+const domainStore = JSON.parse(localStorage.getItem('vd_domains') || '{}');
+const saveDomains = () => localStorage.setItem('vd_domains', JSON.stringify(domainStore));
+const getProjectDomains = n => domainStore[n] || [];
+const setProjectDomains = (n,d) => { domainStore[n] = d; saveDomains(); };
+
+/* ── TOKEN ── */
+const tokenInput = $('vercelToken');
+const savedToken = localStorage.getItem('vd_token');
+if (savedToken) tokenInput.value = savedToken;
+
+let tokenDebounce;
+tokenInput.addEventListener('input', () => {
+  localStorage.setItem('vd_token', tokenInput.value.trim());
+  clearTimeout(tokenDebounce);
+  tokenDebounce = setTimeout(fetchAllProjects, 600);
+});
+
+function getToken() {
+  const t = tokenInput.value.trim();
+  if (!t) throw new Error('Vercel API Token belum diisi!');
+  return t;
+}
+
+/* ── TOAST ── */
+function showToast(msg, isBlue = false) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isBlue ? ' blue-t' : '');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* ── TERMINAL / PROGRESS ── */
+function addLog(type, message) {
+  const terminal = $('terminalBody');
+  const old = terminal.querySelector('.log-prompt-cursor');
+  if (old) old.remove();
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  const time = new Date().toTimeString().slice(0,8);
+  line.innerHTML = `<span style="color:#1e3a4a">[${time}]</span> ${message}`;
+  terminal.appendChild(line);
+  const prompt = document.createElement('div');
+  prompt.className = 'log-line muted log-prompt-cursor';
+  prompt.innerHTML = "$ <span class='log-cursor'></span>";
+  terminal.appendChild(prompt);
+  // Use requestAnimationFrame to batch scroll
+  requestAnimationFrame(() => { terminal.scrollTop = terminal.scrollHeight; });
+}
+
+function setProgress(pct, label) {
+  $('progressFill').style.width = pct + '%';
+  $('progressPct').textContent = pct + '%';
+  $('progressLabel').textContent = label;
+}
+
+/* ── DROP ZONE ── */
+const dropZone = $('dropZone');
+const fileInput = $('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) processFile(fileInput.files[0]); });
+$('btnRemoveFile').addEventListener('click', removeFile);
+
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['html','zip'].includes(ext)) { addLog('error','✕ Format tidak didukung.'); return; }
+  selectedFile = file;
+  $('filePreview').classList.add('active');
+  $('fileName').textContent = file.name;
+  $('fileMeta').textContent = (file.size/1024).toFixed(1) + ' KB · ' + ext.toUpperCase();
+  const icon = ext === 'zip' ? '🗜️' : '🌐';
+  $('fileIcon').textContent = icon;
+  $('dropIcon').textContent = icon;
+  $('btnDeploy').disabled = false;
+  addLog('info', '✓ Berkas dipilih: ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)');
+  const pn = $('projectName');
+  if (!pn.value)
+    pn.value = file.name.replace(/\.(html|zip)$/i,'').toLowerCase().replace(/[^a-z0-9-]/g,'-');
+}
+
+function removeFile() {
+  selectedFile = null;
+  $('filePreview').classList.remove('active');
+  fileInput.value = '';
+  $('btnDeploy').disabled = true;
+  $('dropIcon').textContent = '📂';
+  addLog('warn','⚠ Berkas dibatalkan');
+}
+
+/* ── DEPLOY ── */
+$('btnDeploy').addEventListener('click', startDeploy);
+
+async function startDeploy() {
+  if (!selectedFile) return;
+  let token;
+  try { token = getToken(); } catch(e) { addLog('error','✕ '+e.message); return; }
+
+  const btn = $('btnDeploy');
+  btn.disabled = true;
+  btn.classList.add('btn-deploying');
+  btn.innerHTML = '⏳ &nbsp; SEDANG MENGIRIM...';
+  $('resultCard').classList.remove('active');
+  $('progressWrap').classList.add('active');
+  $('terminalBody').innerHTML = '';
+
+  const pName = $('projectName').value || selectedFile.name.replace(/\.(html|zip)$/i,'');
+  const slug = pName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'vdeploy-project';
+  const ext = selectedFile.name.split('.').pop().toLowerCase();
+
+  try {
+    setProgress(8,'Mengemas berkas...');
+    addLog('info','▶ Memulai proses deployment...');
+    await delay(350);
+
+    let files;
+    if (ext === 'zip') {
+      addLog('info','🗜 Mengekstrak ZIP di memory...');
+      files = await extractZip(selectedFile);
+      addLog('success','✓ ZIP diurai: ' + files.length + ' file.');
+    } else {
+      const content = await readText(selectedFile);
+      files = [{ file:'index.html', data: btoa(unescape(encodeURIComponent(content))), encoding:'base64' }];
+      addLog('success','✓ HTML siap dimuat.');
+    }
+
+    setProgress(28,'Mengunggah ke Vercel...');
+    addLog('info','📤 Mengirim payload ke Vercel Cloud API...');
+    await delay(250);
+
+    const payload = { name:slug, files, projectSettings:{framework:null,buildCommand:null,outputDirectory:null}, target:'production' };
+    const res = await fetch('https://api.vercel.com/v13/deployments', {
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
     });
-
-    function getToken() {
-        const token = tokenInput.value.trim();
-        if (!token) throw new Error("Vercel API Token belum diisi!");
-        return token;
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({error:{message:res.statusText}}));
+      throw new Error(err.error?.message || 'HTTP '+res.status);
     }
+    const result = await res.json();
+    addLog('success','✓ Deployment dibuat! ID: '+result.id);
+    setProgress(45,'Upload selesai, build dimulai...');
 
-    // ============ DROP ZONE ============
-    const dropZone = document.getElementById("dropZone");
-    dropZone.addEventListener("click", () => document.getElementById("fileInput").click());
-    dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("drag-over"); });
-    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
-    dropZone.addEventListener("drop", (e) => {
-        e.preventDefault();
-        dropZone.classList.remove("drag-over");
-        if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+    const deployId = result.id;
+    let state = result.readyState || 'BUILDING', iter = 0;
+    while (!['READY','ERROR','CANCELED'].includes(state)) {
+      await delay(2000);
+      iter++;
+      try {
+        const check = await fetch('https://api.vercel.com/v13/deployments/'+deployId, {headers:{'Authorization':'Bearer '+token}});
+        const cr = await check.json();
+        state = cr.readyState || state;
+        setProgress(Math.round(Math.min(45+iter*1.8, 85)), 'Build berjalan... '+(iter*2)+'s');
+      } catch(_) {}
+    }
+    if (state === 'ERROR') throw new Error('Build gagal!');
+    if (state === 'CANCELED') throw new Error('Deployment dibatalkan.');
+
+    setProgress(90,'Menyinkronkan domain...');
+    const domain = 'https://'+slug+'.vercel.app';
+    addLog('success','🔗 '+domain);
+    setProgress(100,'Selesai! 🚀');
+
+    currentDeploySlug = slug;
+    currentDeployUrl = domain;
+    const rc = $('resultCard');
+    rc.classList.add('active');
+    const urlEl = $('deployUrl');
+    urlEl.innerHTML = `<span class="url-protocol">https://</span><span class="url-domain">${esc(slug)}</span><span class="url-tld">.vercel.app</span>`;
+    urlEl.setAttribute('data-raw-url', domain);
+    $('openLink').setAttribute('data-url', domain);
+    $('resultTime').textContent = 'Ditayangkan ' + new Date().toLocaleDateString('id-ID') + ' · Proyek: ' + slug;
+
+    await syncProjectDomainsFromVercel(slug);
+    await fetchAllProjects();
+    renderSidebarProjects(currentProjects);
+  } catch(err) {
+    addLog('error','✕ Error: '+err.message);
+    setProgress(0,'Deployment dibatalkan.');
+    $('progressWrap').classList.remove('active');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('btn-deploying');
+    btn.innerHTML = '▶ &nbsp; JALANKAN DEPLOYMENT';
+  }
+}
+
+/* ── PROJECTS ── */
+$('btnRefreshProjects').addEventListener('click', fetchAllProjects);
+
+async function fetchAllProjects() {
+  const token = tokenInput.value.trim();
+  if (!token) {
+    $('projectListContainer').innerHTML = "<div class='loading-projects'>Masukkan token untuk melihat project</div>";
+    renderSidebarProjects([]);
+    return;
+  }
+  $('projectListContainer').innerHTML = "<div class='loading-projects'>⟳ Memuat project dari Vercel...</div>";
+  try {
+    let all = [], next = null;
+    do {
+      let url = 'https://api.vercel.com/v9/projects?limit=100';
+      if (next) url += '&until=' + next;
+      const res = await fetch(url, {headers:{'Authorization':'Bearer '+token}});
+      if (!res.ok) throw new Error('Gagal mengambil data project');
+      const data = await res.json();
+      all = all.concat(data.projects || []);
+      next = data.pagination?.next || null;
+    } while (next);
+    currentProjects = all;
+    renderProjectList(all);
+    renderSidebarProjects(all);
+    addLog('info', `📁 ${all.length} project ditemukan di akun Vercel`);
+  } catch(err) {
+    $('projectListContainer').innerHTML = `<div class='loading-projects' style='color:var(--red)'>Gagal memuat: ${err.message}</div>`;
+    addLog('error','Gagal memuat project: '+err.message);
+  }
+}
+
+function renderProjectList(projects) {
+  const c = $('projectListContainer');
+  if (!projects.length) { c.innerHTML = "<div class='loading-projects'>Tidak ada project ditemukan.</div>"; return; }
+  // Build HTML in one string for fast single DOM write
+  const html = projects.map(p => `
+    <div class="project-item">
+      <div class="project-info">
+        <div class="project-name">${esc(p.name)}</div>
+        <div class="project-updated">Updated: ${new Date(p.updatedAt).toLocaleDateString('id-ID')}</div>
+      </div>
+      <div class="project-actions">
+        <button class="btn-manage-domain" data-pname="${esc(p.name)}">⬡ DOMAIN</button>
+        <button class="btn-delete-project" data-pname="${esc(p.name)}">DELETE</button>
+      </div>
+    </div>`).join('');
+  c.innerHTML = html;
+  // Event delegation for project actions
+  c.onclick = e => {
+    const mb = e.target.closest('.btn-manage-domain');
+    const db = e.target.closest('.btn-delete-project');
+    if (mb) openDomainManagerModal(mb.dataset.pname);
+    if (db) confirmDeleteProject(db.dataset.pname);
+  };
+}
+
+function confirmDeleteProject(name) {
+  pendingDeleteProject = name;
+  showConfirmModal('Hapus Project', `Yakin ingin menghapus project "${name}" dari Vercel? Tindakan ini tidak dapat dibatalkan.`, async () => {
+    if (pendingDeleteProject) await deleteProject(pendingDeleteProject);
+    pendingDeleteProject = null;
+  });
+}
+
+async function deleteProject(name) {
+  try {
+    const token = getToken();
+    addLog('warn', `🗑 Menghapus project ${name}...`);
+    const res = await fetch(`https://api.vercel.com/v9/projects/${encodeURIComponent(name)}`, {
+      method:'DELETE', headers:{'Authorization':'Bearer '+token}
     });
-
-    function handleFile(input) { if (input.files[0]) processFile(input.files[0]); }
-
-    function processFile(file) {
-        const ext = file.name.split(".").pop().toLowerCase();
-        if (!["html", "zip"].includes(ext)) {
-            addLog("error", "✕ Format tidak didukung. Upload .html atau .zip saja.");
-            return;
-        }
-        selectedFile = file;
-        document.getElementById("filePreview").classList.add("active");
-        document.getElementById("fileName").textContent = file.name;
-        document.getElementById("fileMeta").textContent = (file.size / 1024).toFixed(1) + " KB · " + ext.toUpperCase();
-        document.getElementById("fileIcon").textContent = ext === "zip" ? "🗜️" : "🌐";
-        document.getElementById("dropIcon").textContent = ext === "zip" ? "🗜️" : "🌐";
-        document.getElementById("btnDeploy").disabled = false;
-        addLog("info", "✓ Berkas dipilih: " + file.name + " (" + (file.size / 1024).toFixed(1) + " KB)");
-        if (!document.getElementById("projectName").value) {
-            document.getElementById("projectName").value = file.name
-                .replace(/\.(html|zip)$/i, "").toLowerCase().replace(/[^a-z0-9-]/g, "-");
-        }
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error?.message || `Gagal delete (${res.status})`);
     }
+    delete domainStore[name];
+    saveDomains();
+    addLog('success', `✓ Project "${name}" berhasil dihapus`);
+    await fetchAllProjects();
+  } catch(err) {
+    addLog('error', 'Gagal hapus project: '+err.message);
+  }
+}
 
-    function removeFile() {
-        selectedFile = null;
-        document.getElementById("filePreview").classList.remove("active");
-        document.getElementById("fileInput").value = "";
-        document.getElementById("btnDeploy").disabled = true;
-        document.getElementById("dropIcon").textContent = "📂";
-        addLog("warn", "⚠ Berkas dibatalkan");
+/* ── DOMAIN SYNC ── */
+async function syncProjectDomainsFromVercel(projectName) {
+  try {
+    const token = getToken();
+    const res = await fetch(`https://api.vercel.com/v10/projects/${encodeURIComponent(projectName)}/domains`, {
+      headers:{'Authorization':'Bearer '+token}
+    });
+    if (!res.ok) {
+      if (res.status === 404) { setProjectDomains(projectName, []); return []; }
+      throw new Error(`Gagal mengambil domains (${res.status})`);
     }
+    const data = await res.json();
+    const domains = (data.domains || []).map(d => d.name);
+    setProjectDomains(projectName, domains);
+    return domains;
+  } catch(e) {
+    console.warn(e);
+    return getProjectDomains(projectName);
+  }
+}
 
-    // ============ LOG & PROGRESS ============
-    function addLog(type, message) {
-        const terminal = document.getElementById("terminalBody");
-        const cursor = terminal.querySelector(".log-prompt-cursor");
-        if (cursor) cursor.remove();
-        const line = document.createElement("div");
-        line.className = "log-line " + type;
-        const time = new Date().toTimeString().slice(0, 8);
-        line.innerHTML = "<span style='color:#1e3a4a'>[" + time + "]</span> " + message;
-        terminal.appendChild(line);
-        const prompt = document.createElement("div");
-        prompt.className = "log-line muted log-prompt-cursor";
-        prompt.innerHTML = "$ <span class='log-cursor'></span>";
-        terminal.appendChild(prompt);
-        terminal.scrollTop = terminal.scrollHeight;
+$('btnSyncDomains').addEventListener('click', async () => {
+  if (!currentProjects.length) { showToast('Tidak ada project untuk disinkronisasi', true); return; }
+  showToast('Menyinkronkan domain dari Vercel...');
+  for (const proj of currentProjects) await syncProjectDomainsFromVercel(proj.name);
+  renderSidebarProjects(currentProjects);
+  if (domainManagerCtx) renderDmDomainList(domainManagerCtx.projectName);
+  showToast('Sinkronisasi selesai ✓');
+});
+
+/* ── RESULT CARD URL SYNC ── */
+function syncResultCardUrl(projectName) {
+  if (projectName !== currentDeploySlug) return;
+  const domains = getProjectDomains(projectName);
+  const displayUrl = domains.length ? 'https://'+domains[domains.length-1] : currentDeployUrl;
+  if (!displayUrl) return;
+  const urlEl = $('deployUrl');
+  if (!urlEl || !urlEl.closest('.result-card.active')) return;
+  const clean = displayUrl.replace(/^https?:\/\//,'');
+  const m = clean.match(/^(.+?)(\.vercel\.app)(\/.*)?$/);
+  urlEl.innerHTML = m
+    ? `<span class="url-protocol">https://</span><span class="url-domain">${esc(m[1])}</span><span class="url-tld">${esc(m[2])}</span>`
+    : `<span class="url-protocol">https://</span><span class="url-domain">${esc(clean)}</span>`;
+  urlEl.setAttribute('data-raw-url', displayUrl);
+  $('openLink').setAttribute('data-url', displayUrl);
+}
+
+/* ── COPY ── */
+$('btnCopyDeploy').addEventListener('click', copyUrl);
+$('openLink').addEventListener('click', () => {
+  const url = $('openLink').getAttribute('data-url');
+  if (url) window.open(url, '_blank');
+});
+
+function copyUrl() {
+  const urlEl = $('deployUrl');
+  const url = (urlEl.getAttribute('data-raw-url') || urlEl.textContent).trim();
+  copyText(url, () => {
+    const btn = $('btnCopyDeploy');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✔ TERSALIN!';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  });
+}
+
+function copyText(text, cb) {
+  // Use Clipboard API when available (more reliable, no DOM mutation)
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => { showToast('✓ Disalin'); if (cb) cb(); }).catch(() => fallbackCopy(text, cb));
+  } else {
+    fallbackCopy(text, cb);
+  }
+}
+
+function fallbackCopy(text, cb) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); showToast('✓ Disalin'); if (cb) cb(); } catch(_) { showToast('Gagal menyalin', true); }
+  document.body.removeChild(ta);
+}
+
+/* ── SIDEBAR ── */
+$('btnOpenSidebar').addEventListener('click', openSidebar);
+$('btnCloseSidebar').addEventListener('click', closeSidebar);
+$('sidebarOverlay').addEventListener('click', closeSidebar);
+$('brandLogo').addEventListener('click', () => location.reload());
+
+function openSidebar() {
+  $('sidebar').classList.add('open');
+  $('sidebarOverlay').classList.add('active');
+  renderSidebarProjects(currentProjects);
+}
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  $('sidebarOverlay').classList.remove('active');
+}
+
+let sidebarFilterTimer;
+$('sidebarSearch').addEventListener('input', e => {
+  clearTimeout(sidebarFilterTimer);
+  sidebarFilterTimer = setTimeout(() => {
+    const q = e.target.value.toLowerCase();
+    renderSidebarProjects(q ? currentProjects.filter(p => p.name.toLowerCase().includes(q)) : currentProjects);
+  }, 150);
+});
+
+function renderSidebarProjects(projects) {
+  const list = $('sidebarProjectList');
+  if (!projects || !projects.length) {
+    list.innerHTML = "<div class='sidebar-empty'>Tidak ada project ditemukan.</div>";
+    return;
+  }
+  list.innerHTML = projects.map(proj => {
+    const domains = getProjectDomains(proj.name);
+    const pn = esc(proj.name);
+    const domainRows = domains.map((d,i) => `
+      <div class="sp-domain-row">
+        <div class="sp-domain-text">${esc(d)}</div>
+        <div class="sp-domain-btns">
+          <button class="sp-btn sp-btn-copy" data-copy="${esc(d)}">⎘ Salin</button>
+          <button class="sp-btn sp-btn-edit" data-proj="${pn}" data-tab="edit">✎ Kelola</button>
+          <button class="sp-btn sp-btn-del" data-proj="${pn}" data-idx="${i}">✕ Hapus</button>
+        </div>
+      </div>`).join('');
+    return `
+      <div class="sidebar-project" id="sp-proj-${pn}">
+        <div class="sp-header" data-proj="${pn}">
+          <div class="sp-name">${pn}</div>
+          <span class="sp-chevron">▼</span>
+        </div>
+        <div class="sp-body">
+          <div class="sp-domain-list">${domainRows || `<div class="sp-empty">Belum ada custom domain</div>`}</div>
+          <div class="sp-action-row">
+            <button class="sp-action-btn mode-edit" data-proj="${pn}" data-tab="edit">✎ Edit Domain</button>
+            <button class="sp-action-btn mode-add" data-proj="${pn}" data-tab="add">+ Tambah Domain</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Event delegation for sidebar
+  list.onclick = e => {
+    const header = e.target.closest('.sp-header');
+    const copyBtn = e.target.closest('[data-copy]');
+    const editBtn = e.target.closest('[data-tab]');
+    const delBtn = e.target.closest('.sp-btn-del');
+    if (header) {
+      document.getElementById('sp-proj-'+header.dataset.proj)?.classList.toggle('expanded');
+      return;
     }
-
-    function setProgress(pct, label) {
-        document.getElementById("progressFill").style.width = pct + "%";
-        document.getElementById("progressPct").textContent = pct + "%";
-        document.getElementById("progressLabel").textContent = label;
+    if (copyBtn) { copyText(copyBtn.dataset.copy); return; }
+    if (delBtn) {
+      deleteDomainSidebar(delBtn.dataset.proj, +delBtn.dataset.idx);
+      return;
     }
-
-    // ============ DEPLOY ============
-    async function startDeploy() {
-        if (!selectedFile) return;
-        let token;
-        try { token = getToken(); }
-        catch (e) {
-            addLog("error", "✕ " + e.message);
-            showCustomModal("Akses Ditolak", e.message, null, false);
-            return;
-        }
-
-        const btn = document.getElementById("btnDeploy");
-        btn.disabled = true;
-        btn.classList.add("btn-deploying");
-        btn.innerHTML = "⏳ &nbsp; SEDANG MENGIRIM...";
-        document.getElementById("resultCard").classList.remove("active");
-        document.getElementById("progressWrap").classList.add("active");
-        document.getElementById("terminalBody").innerHTML = "";
-
-        const projectName = document.getElementById("projectName").value || selectedFile.name.replace(/\.(html|zip)$/i, "");
-        const slug = projectName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "vdeploy-project";
-        const ext = selectedFile.name.split(".").pop().toLowerCase();
-        let files = [];
-
-        try {
-            setProgress(8, "Mengemas berkas...");
-            addLog("info", "▶ Memulai proses deployment...");
-            await delay(350);
-
-            if (ext === "zip") {
-                addLog("info", "🗜 Mengekstrak ZIP di memory...");
-                files = await extractZip(selectedFile);
-                addLog("success", "✓ ZIP diurai: " + files.length + " file.");
-            } else {
-                const content = await readFileAsText(selectedFile);
-                files = [{ file: "index.html", data: btoa(unescape(encodeURIComponent(content))), encoding: "base64" }];
-                addLog("success", "✓ HTML siap dimuat.");
-            }
-
-            setProgress(28, "Mengunggah ke Vercel...");
-            addLog("info", "📤 Mengirim payload ke Vercel Cloud API...");
-            await delay(250);
-
-            const payload = {
-                name: slug,
-                files: files,
-                projectSettings: { framework: null, buildCommand: null, outputDirectory: null },
-                target: "production"
-            };
-
-            const res = await fetch("https://api.vercel.com/v13/deployments", {
-                method: "POST",
-                headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
-                throw new Error(err.error?.message || "HTTP status " + res.status);
-            }
-
-            const result = await res.json();
-            addLog("success", "✓ Deployment dibuat! ID: " + result.id);
-            setProgress(45, "Upload selesai, build dimulai...");
-
-            const deployId = result.id;
-            let state = result.readyState || "BUILDING";
-            let iteration = 0;
-
-            while (!["READY", "ERROR", "CANCELED"].includes(state)) {
-                await delay(2000);
-                iteration++;
-                try {
-                    const check = await fetch("https://api.vercel.com/v13/deployments/" + deployId, {
-                        headers: { "Authorization": "Bearer " + token }
-                    });
-                    const checkRes = await check.json();
-                    state = checkRes.readyState || state;
-                    const buildPct = Math.min(45 + iteration * 1.8, 85);
-                    setProgress(Math.round(buildPct), "Build berjalan... " + (iteration * 2) + "s");
-                } catch (e) { }
-            }
-
-            if (state === "ERROR") throw new Error("Build gagal!");
-            if (state === "CANCELED") throw new Error("Deployment dibatalkan.");
-
-            setProgress(90, "Konfigurasi domain...");
-            let domain = "https://" + slug + ".vercel.app";
-            addLog("success", "🔗 " + domain);
-            setProgress(100, "Selesai! 🚀");
-
-            document.getElementById("resultCard").classList.add("active");
-            const urlEl = document.getElementById("deployUrl");
-            const formattedUrl = domain.replace(
-                /^(https:\/\/)(.+?)(\.vercel\.app)(\/?.*)$/,
-                (_, p, sub, tld, path) =>
-                    "<span class='url-protocol'>" + p + "</span>" +
-                    "<span class='url-domain'>" + sub + "</span>" +
-                    "<span class='url-tld'>" + tld + "</span>" + path
-            );
-            urlEl.innerHTML = formattedUrl || domain;
-            urlEl.setAttribute("data-raw-url", domain);
-            document.getElementById("openLink").setAttribute("data-url", domain);
-            document.getElementById("resultTime").textContent = "Ditayangkan " + new Date().toLocaleDateString("id-ID") + " · Proyek: " + slug;
-
-            saveHistory({ name: slug, url: domain, time: new Date().toISOString(), file: selectedFile.name });
-            renderHistory();
-            await fetchAllProjects(); // Refresh project list
-
-        } catch (err) {
-            addLog("error", "✕ Error: " + err.message);
-            setProgress(0, "Deployment dibatalkan.");
-            document.getElementById("progressWrap").classList.remove("active");
-        } finally {
-            btn.disabled = false;
-            btn.classList.remove("btn-deploying");
-            btn.innerHTML = "▶ &nbsp; JALANKAN DEPLOYMENT";
-        }
+    if (editBtn) {
+      closeSidebar();
+      openDomainManagerModal(editBtn.dataset.proj).then(() => switchDmTab(editBtn.dataset.tab));
     }
+  };
+}
 
-    // ============ FETCH ALL PROJECTS ============
-    async function fetchAllProjects() {
-        const token = tokenInput.value.trim();
-        if (!token) {
-            document.getElementById("projectListContainer").innerHTML = "<div class='loading-projects'>Masukkan token untuk melihat project</div>";
-            return;
-        }
+async function deleteDomainSidebar(projectName, index) {
+  const domains = getProjectDomains(projectName);
+  const d = domains[index];
+  showConfirmModal('Hapus Domain', `Hapus domain "${d}" dari project "${projectName}" di Vercel?`, async () => {
+    try {
+      const token = getToken();
+      await fetch(`https://api.vercel.com/v10/projects/${encodeURIComponent(projectName)}/domains/${encodeURIComponent(d)}`, {
+        method:'DELETE', headers:{'Authorization':'Bearer '+token}
+      });
+      await syncProjectDomainsFromVercel(projectName);
+      const q = $('sidebarSearch').value.toLowerCase();
+      renderSidebarProjects(q ? currentProjects.filter(p => p.name.toLowerCase().includes(q)) : currentProjects);
+      requestAnimationFrame(() => { document.getElementById('sp-proj-'+projectName)?.classList.add('expanded'); });
+      syncResultCardUrl(projectName);
+      showToast('Domain dihapus dari Vercel ✓');
+    } catch(_) { showToast('Gagal hapus domain', true); }
+  });
+}
 
-        document.getElementById("projectListContainer").innerHTML = "<div class='loading-projects'>⟳ Memuat project dari Vercel...</div>";
-        
-        try {
-            let allProjects = [];
-            let next = null;
-            do {
-                let url = "https://api.vercel.com/v9/projects?limit=100";
-                if (next) url += "&until=" + next;
-                const res = await fetch(url, { headers: { "Authorization": "Bearer " + token } });
-                if (!res.ok) throw new Error("Gagal mengambil data project");
-                const data = await res.json();
-                allProjects = [...allProjects, ...(data.projects || [])];
-                next = data.pagination?.next || null;
-            } while (next);
+/* ── DOMAIN MANAGER MODAL ── */
+$('btnEditDomainResult').addEventListener('click', () => openDomainManagerModal());
+$('btnCloseDomainModal').addEventListener('click', closeDomainManagerModal);
+$('dmTabEdit').addEventListener('click', () => switchDmTab('edit'));
+$('dmTabAdd').addEventListener('click', () => switchDmTab('add'));
+$('btnDmAdd').addEventListener('click', dmAddDomain);
+$('dmAddInput').addEventListener('keydown', e => { if (e.key === 'Enter') dmAddDomain(); });
 
-            currentProjects = allProjects;
-            renderProjectList(allProjects);
-            addLog("info", `📁 ${allProjects.length} project ditemukan di akun Vercel`);
-        } catch (err) {
-            document.getElementById("projectListContainer").innerHTML = `<div class='loading-projects' style='color:var(--red)'>Gagal memuat: ${err.message}</div>`;
-            addLog("error", "Gagal memuat project: " + err.message);
-        }
-    }
+async function openDomainManagerModal(projectName, isDeployResult = false) {
+  const name = projectName || currentDeploySlug;
+  if (!name) { showToast('Tidak ada project aktif', true); return; }
+  await syncProjectDomainsFromVercel(name);
+  domainManagerCtx = { projectName: name, isDeployResult };
+  $('dmTitle').textContent = '◆ KELOLA DOMAIN — ' + name.toUpperCase();
+  $('dmProjectNameHint').textContent = name;
+  renderDmDomainList(name);
+  switchDmTab('edit');
+  $('domainManagerModal').classList.add('active');
+}
 
-    function renderProjectList(projects) {
-        const container = document.getElementById("projectListContainer");
-        if (!projects.length) {
-            container.innerHTML = "<div class='history-empty'>Tidak ada project ditemukan.</div>";
-            return;
-        }
-        container.innerHTML = projects.map(proj => `
-            <div class="project-item">
-                <div class="project-info">
-                    <div class="project-name">${escapeHtml(proj.name)}</div>
-                    <div class="project-updated">Updated: ${new Date(proj.updatedAt).toLocaleDateString("id-ID")}</div>
-                </div>
-                <button class="btn-delete-project" onclick="confirmDeleteProject('${escapeHtml(proj.name)}')">DELETE</button>
-            </div>
-        `).join("");
-    }
+function closeDomainManagerModal() {
+  $('domainManagerModal').classList.remove('active');
+  domainManagerCtx = null;
+}
 
-    // ============ DELETE PROJECT ============
-    let pendingDeleteProject = null;
-    function confirmDeleteProject(projectName) {
-        pendingDeleteProject = projectName;
-        showCustomModal("Hapus Project", `Yakin ingin menghapus project "${projectName}" dari Vercel? Tindakan ini tidak dapat dibatalkan.`, async () => {
-            if (pendingDeleteProject) await deleteProject(pendingDeleteProject);
-            pendingDeleteProject = null;
-        });
-    }
+function switchDmTab(tab) {
+  const isEdit = tab === 'edit';
+  $('dmTabEdit').classList.toggle('active', isEdit);
+  $('dmTabAdd').classList.toggle('active', !isEdit);
+  $('dmPanelEdit').classList.toggle('active', isEdit);
+  $('dmPanelAdd').classList.toggle('active', !isEdit);
+  if (!isEdit) setTimeout(() => $('dmAddInput').focus(), 100);
+}
 
-    async function deleteProject(projectName) {
-        try {
-            const token = getToken();
-            addLog("warn", `🗑 Menghapus project ${projectName}...`);
-            const res = await fetch(`https://api.vercel.com/v9/projects/${encodeURIComponent(projectName)}`, {
-                method: "DELETE",
-                headers: { "Authorization": "Bearer " + token }
-            });
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error?.message || `Gagal delete (${res.status})`);
-            }
-            addLog("success", `✓ Project "${projectName}" berhasil dihapus`);
-            await fetchAllProjects();
-            // Also cleanup history
-            deployHistory = deployHistory.filter(h => h.name !== projectName);
-            localStorage.setItem("vd_history", JSON.stringify(deployHistory));
-            renderHistory();
-        } catch (err) {
-            addLog("error", `Gagal hapus project: ${err.message}`);
-            showCustomModal("Error", err.message, null, false);
-        }
-    }
+function renderDmDomainList(projectName) {
+  const domains = getProjectDomains(projectName);
+  const list = $('dmDomainList');
+  if (!domains.length) {
+    list.innerHTML = '<div class="dm-empty">Belum ada custom domain untuk project ini.</div>';
+    return;
+  }
+  list.innerHTML = domains.map((d,i) => `
+    <div class="dm-domain-item" id="dmitem-${i}">
+      <span class="dm-item-text" id="dmtext-${i}">${esc(d)}</span>
+      <input class="dm-item-input" id="dminput-${i}" value="${esc(d)}">
+      <div class="dm-item-btns">
+        <button class="dm-ibtn dm-ibtn-edit" data-i="${i}" data-action="edit">✎ Edit</button>
+        <button class="dm-ibtn dm-ibtn-save" id="dmbtn-save-${i}" data-i="${i}" data-action="save">✔ Simpan</button>
+        <button class="dm-ibtn dm-ibtn-del" data-i="${i}" data-action="del">✕ Hapus</button>
+      </div>
+    </div>
+    <div class="dm-confirm-bar" id="dmconfirm-${i}">
+      <span class="dm-confirm-text">Hapus domain ini?</span>
+      <div class="dm-confirm-btns">
+        <button class="dm-cbtn dm-cbtn-no" data-i="${i}" data-action="cancel-del">Batal</button>
+        <button class="dm-cbtn dm-cbtn-yes" data-i="${i}" data-action="confirm-del">Ya, Hapus</button>
+      </div>
+    </div>`).join('');
 
-    // ============ HELPERS ============
-    function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-    function readFileAsText(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = e => resolve(e.target.result);
-            reader.onerror = reject;
-            reader.readAsText(file);
-        });
-    }
-    function uint8ToBase64(bytes) {
-        let binary = "";
-        const chunk = 8192;
-        for (let i = 0; i < bytes.length; i += chunk)
-            binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunk, bytes.length)));
-        return btoa(binary);
-    }
-    async function extractZip(file) {
-        const buffer = await file.arrayBuffer();
-        const zip = await JSZip.loadAsync(buffer);
-        const entries = Object.entries(zip.files).filter(([_, f]) => !f.dir);
-        let stripPrefix = "";
-        if (entries.length > 0) {
-            const prefix = entries[0][0].split("/")[0] + "/";
-            if (entries.length > 1 && entries.every(([p]) => p.startsWith(prefix))) stripPrefix = prefix;
-        }
-        const files = [];
-        for (const [path, entry] of entries) {
-            const cleanPath = stripPrefix ? path.slice(stripPrefix.length) : path;
-            if (!cleanPath) continue;
-            const data = await entry.async("uint8array");
-            files.push({ file: cleanPath, data: uint8ToBase64(data), encoding: "base64" });
-        }
-        return files;
-    }
+  // Setup enter key for inline inputs
+  domains.forEach((_,i) => {
+    const inp = $('dminput-'+i);
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') dmSaveDomainEdit(i); });
+  });
 
-    function escapeHtml(str) {
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
+  // Event delegation
+  list.onclick = e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const {i, action} = btn.dataset;
+    const idx = +i;
+    if (action === 'edit') dmStartEdit(idx);
+    else if (action === 'save') dmSaveDomainEdit(idx);
+    else if (action === 'del') dmShowConfirmDelete(idx);
+    else if (action === 'cancel-del') dmHideConfirmDelete(idx);
+    else if (action === 'confirm-del') dmConfirmDelete(idx);
+  };
+}
 
-    function copyUrl() {
-        const urlEl = document.getElementById("deployUrl");
-        const url = (urlEl.getAttribute("data-raw-url") || urlEl.textContent).trim();
-        const ta = document.createElement("textarea");
-        ta.value = url;
-        ta.style.position = "fixed";
-        document.body.appendChild(ta);
-        ta.select();
-        try {
-            document.execCommand("copy");
-            document.body.removeChild(ta);
-            const btn = document.getElementById("btnCopyDeploy");
-            const orig = btn.innerHTML;
-            btn.innerHTML = "✔ TERSALIN!";
-            setTimeout(() => { btn.innerHTML = orig; }, 2000);
-        } catch (err) {
-            document.body.removeChild(ta);
-            showCustomModal("Error", "Gagal menyalin. Salin manual: " + url, null, false);
-        }
-    }
+function dmStartEdit(index) {
+  $('dmtext-'+index)?.classList.add('hide');
+  const inp = $('dminput-'+index);
+  inp?.classList.add('show');
+  const editBtns = document.querySelectorAll(`[data-i="${index}"][data-action="edit"]`);
+  editBtns.forEach(b => b.style.display = 'none');
+  $('dmbtn-save-'+index)?.classList.add('show');
+  $('dmitem-'+index)?.classList.add('editing-inline');
+  inp?.focus(); inp?.select();
+}
 
-    // ============ MODAL ============
-    function showCustomModal(title, desc, confirmCallback, showConfirm = true) {
-        document.getElementById("modalTitle").textContent = title;
-        document.getElementById("modalDesc").textContent = desc;
-        const btn = document.getElementById("modalConfirmBtn");
-        btn.style.display = showConfirm ? "inline-flex" : "none";
-        btn.onclick = () => { if (confirmCallback) confirmCallback(); closeModal(); };
-        document.getElementById("customModal").classList.add("active");
-    }
-    function closeModal() { document.getElementById("customModal").classList.remove("active"); }
+function dmShowConfirmDelete(index) {
+  document.querySelectorAll('.dm-confirm-bar.show').forEach(el => el.classList.remove('show'));
+  $('dmconfirm-'+index)?.classList.add('show');
+  document.querySelector(`[data-i="${index}"][data-action="del"]`).style.opacity = '.4';
+}
 
-    // ============ HISTORY ============
-    function saveHistory(entry) {
-        deployHistory.unshift(entry);
-        localStorage.setItem("vd_history", JSON.stringify(deployHistory));
-    }
-    function renderHistory() {
-        const container = document.getElementById("historyList");
-        if (!container) return;
-        if (!deployHistory.length) {
-            container.innerHTML = "<div class='history-empty'>Belum ada riwayat deployment.</div>";
-            return;
-        }
-        container.innerHTML = deployHistory.map(item => `
-            <div class="history-item" onclick="window.open('${item.url}', '_blank')">
-                <div class="h-left">
-                    <div class="h-dot"></div>
-                    <div class="h-name">${escapeHtml(item.file)}</div>
-                </div>
-                <div class="h-time">${new Date(item.time).toLocaleDateString("id-ID")}</div>
-            </div>
-        `).join("");
-    }
+function dmHideConfirmDelete(index) {
+  $('dmconfirm-'+index)?.classList.remove('show');
+  const b = document.querySelector(`[data-i="${index}"][data-action="del"]`);
+  if (b) b.style.opacity = '';
+}
 
-    // Initialize
-    renderHistory();
-    // Load projects if token exists
-    if (savedToken) fetchAllProjects();
+async function dmConfirmDelete(index) {
+  if (!domainManagerCtx) return;
+  const domains = getProjectDomains(domainManagerCtx.projectName);
+  const domainName = domains[index];
+  const bar = $('dmconfirm-'+index);
+  if (bar) bar.innerHTML = `<span class="dm-confirm-text" style="color:var(--blue)">⏳ Menghapus dari Vercel...</span>`;
+  try {
+    const token = getToken();
+    const res = await fetch(`https://api.vercel.com/v10/projects/${encodeURIComponent(domainManagerCtx.projectName)}/domains/${encodeURIComponent(domainName)}`, {
+      method:'DELETE', headers:{'Authorization':'Bearer '+token}
+    });
+    if (!res.ok && res.status !== 404) {
+      const data = await res.json().catch(() => ({}));
+      const msg = data?.error?.message || `Error ${res.status}`;
+      showToast('Gagal hapus: '+msg, true);
+      addLog('error','✕ Gagal hapus domain dari Vercel: '+msg);
+      await syncProjectDomainsFromVercel(domainManagerCtx.projectName);
+      renderDmDomainList(domainManagerCtx.projectName);
+      return;
+    }
+    domains.splice(index, 1);
+    setProjectDomains(domainManagerCtx.projectName, domains);
+    renderDmDomainList(domainManagerCtx.projectName);
+    renderSidebarProjects(currentProjects);
+    syncResultCardUrl(domainManagerCtx.projectName);
+    addLog('success', `✓ Domain "${domainName}" dihapus dari Vercel`);
+    showToast('Domain dihapus dari Vercel ✓');
+  } catch(e) {
+    showToast('Error: '+e.message, true);
+    await syncProjectDomainsFromVercel(domainManagerCtx.projectName);
+    renderDmDomainList(domainManagerCtx.projectName);
+  }
+}
+
+async function dmSaveDomainEdit(index) {
+  if (!domainManagerCtx) return;
+  const newVal = $('dminput-'+index)?.value.trim();
+  if (!newVal) { showToast('Domain tidak boleh kosong', true); return; }
+  const domains = getProjectDomains(domainManagerCtx.projectName);
+  const oldVal = domains[index];
+  if (oldVal === newVal) { showToast('Tidak ada perubahan', true); return; }
+
+  const saveBtn = $('dmbtn-save-'+index);
+  if (saveBtn) { saveBtn.textContent = '⏳'; saveBtn.disabled = true; }
+
+  try {
+    const token = getToken();
+    await fetch(`https://api.vercel.com/v10/projects/${encodeURIComponent(domainManagerCtx.projectName)}/domains/${encodeURIComponent(oldVal)}`, {
+      method:'DELETE', headers:{'Authorization':'Bearer '+token}
+    });
+    const res = await fetch(`https://api.vercel.com/v10/projects/${encodeURIComponent(domainManagerCtx.projectName)}/domains`, {
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body: JSON.stringify({name: newVal})
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data?.error?.message || `Error ${res.status}`;
+      showToast('Gagal ganti domain: '+msg, true);
+      addLog('error','✕ '+msg);
+      await syncProjectDomainsFromVercel(domainManagerCtx.projectName);
+      renderDmDomainList(domainManagerCtx.projectName);
+      return;
+    }
+    domains[index] = newVal;
+    setProjectDomains(domainManagerCtx.projectName, domains);
+    renderDmDomainList(domainManagerCtx.projectName);
+    renderSidebarProjects(currentProjects);
+    syncResultCardUrl(domainManagerCtx.projectName);
+    addLog('success', `✓ Domain diubah: "${oldVal}" → "${newVal}"`);
+    showToast('Domain diperbarui di Vercel ✓');
+  } catch(e) {
+    showToast('Error: '+e.message, true);
+    await syncProjectDomainsFromVercel(domainManagerCtx.projectName);
+    renderDmDomainList(domainManagerCtx.projectName);
+  } finally {
+    if (saveBtn) { saveBtn.textContent = '✔ Simpan'; saveBtn.disabled = false; }
+  }
+}
+
+async function dmAddDomain() {
+  if (!domainManagerCtx) return;
+  const input = $('dmAddInput');
+  const val = input.value.trim();
+  if (!val) { showToast('Masukkan domain terlebih dahulu', true); return; }
+  const domains = getProjectDomains(domainManagerCtx.projectName);
+  if (domains.includes(val)) { showToast('Domain sudah ada', true); return; }
+
+  const addBtn = $('btnDmAdd');
+  const orig = addBtn.textContent;
+  addBtn.textContent = '⏳ Menambahkan...';
+  addBtn.disabled = true;
+
+  try {
+    const token = getToken();
+    const res = await fetch(`https://api.vercel.com/v10/projects/${encodeURIComponent(domainManagerCtx.projectName)}/domains`, {
+      method:'POST',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body: JSON.stringify({name: val})
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data?.error?.message || `Error ${res.status}`;
+      showToast('Gagal: '+msg, true);
+      addLog('error','✕ Gagal assign domain ke Vercel: '+msg);
+      return;
+    }
+    await syncProjectDomainsFromVercel(domainManagerCtx.projectName);
+    input.value = '';
+    renderSidebarProjects(currentProjects);
+    syncResultCardUrl(domainManagerCtx.projectName);
+    addLog('success', `✓ Domain "${val}" berhasil ditambahkan ke project ${domainManagerCtx.projectName}`);
+    showToast('Domain ditambahkan ke Vercel ✓');
+    switchDmTab('edit');
+    renderDmDomainList(domainManagerCtx.projectName);
+  } catch(e) {
+    showToast('Error: '+e.message, true);
+  } finally {
+    addBtn.textContent = orig;
+    addBtn.disabled = false;
+  }
+}
+
+/* ── MODAL (confirm) ── */
+$('btnModalCancel').addEventListener('click', closeModal);
+
+function showConfirmModal(title, desc, confirmCb) {
+  $('modalBox').className = 'modal-box';
+  $('modalTitle').className = 'modal-title';
+  $('modalTitle').textContent = title;
+  $('modalDesc').textContent = desc;
+  $('modalInput').style.display = 'none';
+  const btn = $('modalConfirmBtn');
+  btn.className = 'btn modal-confirm-red';
+  btn.textContent = 'Ya, Lanjutkan';
+  btn.onclick = () => { if (confirmCb) confirmCb(); closeModal(); };
+  $('customModal').classList.add('active');
+}
+
+function closeModal() { $('customModal').classList.remove('active'); }
+
+// Close modals on overlay click
+$('customModal').addEventListener('click', e => { if (e.target === $('customModal')) closeModal(); });
+$('domainManagerModal').addEventListener('click', e => { if (e.target === $('domainManagerModal')) closeDomainManagerModal(); });
+
+/* ── INIT ── */
+if (savedToken) fetchAllProjects();
+
+})();
 </script>
 </body>
 </html>
