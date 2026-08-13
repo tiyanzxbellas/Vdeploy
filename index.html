@@ -136,6 +136,8 @@ body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(r
 .input-group{margin-bottom:1.25rem}
 .input-group label{display:block;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.2em;color:var(--muted);margin-bottom:.5rem}
 .input-group input{width:100%;padding:.75rem 1rem;background:var(--bg3);border:1px solid var(--border);color:var(--green);font-size:16px;font-weight:500;font-family:var(--font);outline:none;transition:border-color var(--trans),box-shadow var(--trans),background var(--trans);caret-color:var(--green)}
+.input-group input[type="password"]{font-family:sans-serif;letter-spacing:0.125em}
+.input-group input[type="password"]::placeholder{font-family:var(--font);letter-spacing:normal}
 .input-group input:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(0,255,136,.1),0 0 20px rgba(0,255,136,.05);background:rgba(0,255,136,.03)}
 .input-group input::placeholder{color:var(--muted);font-size:.8rem}
 .helper-text{font-size:.7rem;color:var(--muted);margin-top:.4rem}
